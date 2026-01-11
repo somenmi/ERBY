@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#333333">
+
+    <title>ERBY: Easy Roadmap Builder of Yalkee</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="apple-touch-icon" href="images/logo.png">
+
+    <meta name="apple-mobile-web-app-title" content="ERBY">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial;
+            background: #1a1a1a;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .hr {
+            width: 70%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            margin: 5px auto;
+        }
+
+        .bold {
+            font-weight: 900;
+            letter-spacing: 1.5px;
+        }
+
+        .ct {
+            font-size: 18px;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            background: #2d2d2d;
+        }
+
+        .sidebar {
+            width: 60px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 0;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .sidebar button:hover {
+            background: #444;
+        }
+
+        .sidebar button.active {
+            background: #3949ab;
+        }
+
+        .sidebar-help {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            font-size: 12px;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            color: #aaa;
+            opacity: 30%;
+            text-align: center;
+            line-height: 1.4;
+            transform: rotate(-90deg);
+            white-space: nowrap;
+            letter-spacing: 0.4px;
+            background: #333;
+            margin-top: auto;
+        }
+
+        .main-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #2d2d2d;
+            transition: background 0.5s ease;
+        }
+
+        .grid-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2d2d2d;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .grid-background.active {
+            opacity: 1;
+        }
+
+        .grid-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("images/bg.png");
+            background-size: 40px 40px;
+            opacity: 0.2;
+            animation: movingGridRight 20s linear infinite;
+        }
+
+        @keyframes movingGridRight {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 40px 0;
+            }
+        }
+
+        #roadmapCanvas {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+
+        .tooltip {
+            z-index: 1000;
+        }
+
+        .modal input,
+        .modal textarea,
+        #notepadText {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        .node {
+            position: absolute;
+            border-radius: 8px;
+            padding: 10px;
+            width: 220px;
+            min-height: 50px;
+            cursor: move;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 2px solid #5c6bc0;
+            z-index: 10;
+            transition: all 0.1s linear;
+            will-change: transform, left, top;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .node.locked {
+            cursor: default;
+        }
+
+        .node.selected {
+            box-shadow: 0 0 0 2px #ffd000, 0 4px 16px rgba(0, 0, 0, 0.4);
+            z-index: 101;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .title-container {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .node-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            line-height: 1.2;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .node-description {
+            font-size: 12px;
+            color: #e0e0e0;
+            margin-bottom: 0px;
+            min-height: 8px;
+            max-height: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            line-height: 1;
+            cursor: default;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+        }
+
+        .progress-scale {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5px;
+            margin-top: 2px;
+            cursor: default;
+        }
+
+        .progress-square {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.5s ease;
+            border: 1px solid rgba(44, 44, 44, 0.4);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-square.inactive {
+            background: #555;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .connection {
+            position: absolute;
+            background: #798aeb;
+            height: 3.5px;
+            transform-origin: 0 0;
+            z-index: 5;
+            pointer-events: auto;
+        }
+
+        .connection:hover {
+            background: #ff0000;
+            height: 5px;
+        }
+
+        .connection::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -3px;
+            border-left: 6px solid #5c6bc0;
+            border-top: 3px solid transparent;
+            border-bottom: 3px transparent;
+        }
+
+        .connection:hover::after {
+            border-left-color: #ff0000;
+        }
+
+        .connection.active {
+            background: #ffd000;
+            height: 3.5px;
+            z-index: 100;
+        }
+
+        .connection.active::after {
+            border-left-color: #ffd000;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            width: 620px;
+            max-width: 1200px;
+        }
+
+        .help-modal .modal-content {
+            width: 710px;
+            height: 900px;
+        }
+
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 15px;
+            background: #444;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #3949ab;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .lock-status {
+            position: absolute;
+            top: 5px;
+            left: 200px;
+            font-size: 11px;
+            color: #ff9800;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .color-option {
+            width: 25px;
+            height: 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: white;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3949ab;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 3rem;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .template-card {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .template-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .template-card.selected {
+            border-color: #3949ab;
+            background: rgba(57, 73, 171, 0.1);
+        }
+
+        .template-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 15px;
+            color: white;
+        }
+
+        .template-info {
+            flex: 1;
+        }
+
+        .template-info h4 {
+            margin: 0 0 5px 0;
+            color: white;
+            font-size: 16px;
+        }
+
+        .template-info p {
+            margin: 0;
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .custom-color-picker {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 0;
+        }
+
+        .native-color-input {
+            width: 50px;
+            height: 64px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .native-color-input::-webkit-color-swatch {
+            border-radius: 4px;
+            border: 2px solid #555;
+        }
+
+        .native-color-input::-moz-color-swatch {
+            border-radius: 4px;
+            border: 2px solid #555;
+        }
+
+        .native-color-hex {
+            height: 64px;
+            font-weight: 600;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .help-content {
+            max-height: 740px;
+            overflow-y: auto;
+            padding-right: 10px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .help-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .help-section {
+            margin-bottom: 20px;
+        }
+
+        .help-section h2 {
+            color: #ffbb00;
+            margin-bottom: 15px;
+        }
+
+        .help-section h4 {
+            color: #ffbb00;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .help-section ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .help-section li {
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #242424;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 2px;
+            color: #ffd000;
+        }
+
+        .controls-list {
+            display: grid;
+            grid-template-columns: 30px 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .help-footer {
+            margin-top: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+
+        .notepad-modal .modal-content {
+            width: 120vh;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notepad-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #444;
+            background: #47463f;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .notepad-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notepad-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #notepadText {
+            width: 100%;
+            height: 400px;
+            padding: 15px;
+            background: #47463f;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s;
+            margin-bottom: 10px;
+        }
+
+        #notepadText:focus {
+            outline: none;
+            border-color: #ffbb00;
+            box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+        }
+
+        .notepad-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #444;
+            background: #47463f;
+            border-radius: 0 0 8px 8px;
+            text-align: right;
+        }
+
+        .notepad-stats {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .char-count {
+            color: #66bb6a;
+        }
+
+        .line-count {
+            color: #42a5f5;
+        }
+
+        .word-count {
+            color: #ff9800;
+        }
+
+        .notepad-auto-save {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 10px;
+        }
+
+        .auto-save-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .notepad-auto-save.saving .auto-save-indicator {
+            background: #ff9800;
+        }
+
+        .notepad-auto-save.saved .auto-save-indicator {
+            background: #4caf50;
+            animation: none;
+        }
+
+        .notepad-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .notepad-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .notepad-btn-primary {
+            background: #e4a700;
+            color: #ffffff;
+        }
+
+        .notepad-btn-primary:hover {
+            background: #ffe398;
+            color: black;
+        }
+
+        .notepad-btn-secondary {
+            background: #555;
+            color: white;
+        }
+
+        .notepad-btn-secondary:hover {
+            background: #666;
+        }
+
+        .notepad-btn-success {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .notepad-btn-success:hover {
+            background: #86d48a;
+            color: black;
+        }
+
+        .notepad-formatting-tools {
+            display: flex;
+            gap: 5px;
+        }
+
+        .format-btn {
+            padding: 6px 10px;
+            background: #444;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+
+        .format-btn:hover {
+            background: #555;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .format-btn i {
+            font-size: 12px;
+        }
+
+        .notepad-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+        }
+
+        .font-size-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 10px;
+            background: #444;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 2px 5px;
+        }
+
+        .font-size-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .font-size-btn:hover {
+            background: #555;
+            color: white;
+        }
+
+        .font-size-value {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 24px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .logo-btn {
+            background: none;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
+            animation: hueRotate 10s infinite linear;
+            transition: transform 0.3s ease;
+            border-radius: 6px;
+        }
+
+        .logo-btn:hover .logo-icon {
+            transform: scale(1.1);
+        }
+
+        @keyframes hueRotate {
+            0% {
+                filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
+            }
+
+            100% {
+                filter: hue-rotate(360deg) saturate(1.5) brightness(1.2);
+            }
+        }
+
+        @supports not (filter: hue-rotate(0deg)) {
+            .logo-icon {
+                animation: none;
+            }
+
+            .logo-btn:hover .logo-icon {
+                filter: brightness(1.3);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <button class="logo-btn" title="ERBY - Справка (F1)" onclick="showHelp()">
+                <img src="images/logo.png" alt="ERBY" class="logo-icon">
+            </button>
+            <hr class="hr">
+            <button title="Выбрать шаблон" onclick="showTemplates()"><i class="fas fa-layer-group"></i></button>
+            <button title="Загрузить из файла" onclick="loadFromFile()"><i class="fas fa-folder-open"></i></button>
+            <button title="Сохранить в браузере (S)" onclick="saveAll()"><i class="fas fa-save"></i></button>
+            <button title="Экспорт в JSON" onclick="exportData()"><i class="fas fa-file-export"></i></button>
+            <hr class="hr">
+            <button id="connectBtn" title="Режим связей (C)" onclick="toggleConnectionMode()"><i
+                    class="fas fa-project-diagram"></i></button>
+            <button title="Блокнот (N)" onclick="toggleNotepad()"><i class="fas fa-pencil-alt"></i></button>
+            <button id="lockBtn" title="Заблокировать все окна (L)" onclick="toggleLockAll()"><i
+                    class="fas fa-unlock"></i></button>
+            <hr class="hr">
+            <button title="Добавить контейнер" onclick="addNode()"><i class="fas fa-plus"></i></button>
+
+            <div class="sidebar-help">
+                <div>2nd Click: <span style="color: #ffee00;">Edit</span></div>
+                <div>RMB: <span style="color: #d84d4d;">Block</span> / <span style="color: #58d84d;">Unlock</span></div>
+            </div>
+            <hr class="hr">
+            <div class="clock-container" style="margin-top: 6px; padding: 4px;">
+                <div style="
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            color: #ffffff94;
+            text-align: center;
+            line-height: 1.15;
+            letter-spacing: 2px;
+        ">
+                    <div id="clock-hh">000</div>
+                    <div id="clock-mm">000</div>
+                    <div id="clock-ss">000</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div id="gridBackground" class="grid-background"></div>
+
+            <div id="roadmapCanvas"></div>
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+
+    <div id="nodeModal" class="modal">
+        <div class="modal-content">
+            <div class="editor-header">
+                <h3 id="modalTitle">Редактировать контейнер</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ddd;">Заголовок:</label>
+                <input type="text" id="nodeTitle" placeholder="Введите заголовок">
+            </div>
+
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ddd;">Описание:</label>
+                <textarea id="nodeDesc" placeholder="Введите описание" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #ddd;">Цвет фона:</label>
+
+                <div class="custom-color-picker">
+                    <input type="color" id="nativeColorPicker" class="native-color-input" value="#3c4385">
+                    <input type="text" id="nodeColor" class="native-color-hex" placeholder="#3c4385">
+                </div>
+
+                <div class="color-picker-container">
+                    <div class="color-option" style="background: #3c4385;" onclick="selectColor('#3c4385')"></div>
+                    <div class="color-option" style="background: #bd3c72;" onclick="selectColor('#bd3c72')"></div>
+                    <div class="color-option" style="background: #7e3e9b;" onclick="selectColor('#7e3e9b')"></div>
+                    <div class="color-option" style="background: #562eb1;" onclick="selectColor('#562eb1')"></div>
+                    <div class="color-option" style="background: #307db1;" onclick="selectColor('#307db1')"></div>
+                    <div class="color-option" style="background: #15d887;" onclick="selectColor('#15d887')"></div>
+                    <div class="color-option" style="background: #7dd815;" onclick="selectColor('#7dd815')"></div>
+                    <div class="color-option" style="background: #b39430;" onclick="selectColor('#b39430')"></div>
+                    <div class="color-option" style="background: #b84d2d;" onclick="selectColor('#b84d2d')"></div>
+                    <div class="color-option" style="background: #b13939;" onclick="selectColor('#b13939')"></div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-danger" onclick="deleteEditingNode()">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
+                <div style="display: flex; gap: 10px; flex: 2;">
+                    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button class="btn btn-primary" onclick="saveNode()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal help-modal">
+        <div class="modal-content">
+            <div class="editor-header">
+                <h2><i class="fas fa-question-circle"></i> Справка</h2>
+                <button class="close-btn" onclick="closeHelp()">&times;</button>
+            </div>
+
+            <div class="help-content">
+                <div class="help-section">
+                    <h4><i class="fas fa-rocket"></i> О программе</h4>
+                    <p><span class="bold">ERBY</span> (Easy Roadmap Builder of Yalkee) - визуальный конструктор дорожных
+                        карт для обучения и
+                        планирования. Создавайте контейнеры,
+                        устанавливайте связи и отслеживайте прогресс.</p>
+                </div>
+
+                <div class="help-section">
+                    <h4><i class="fas fa-keyboard"></i> Горячие клавиши</h4>
+                    <ul class="ct">
+                        <li><span class="key">F1</span> - Открыть эту справку</li>
+                        <li><span class="key">Esc</span> - Отмена</li>
+                        <li><span class="key">Delete</span> - Удалить выбранный контейнер</li>
+                        <li><span class="key">L</span> - Блокировка/разблокировка ВСЕХ окон</li>
+                        <li><span class="key">C</span> - Режим создания связей</li>
+                        <li><span class="key">S</span> - Сохранить в браузере</li>
+                        <li><span class="key">Ctrl</span> + <span class="key">S</span> - Экспорт в JSON</li>
+                        <li><span class="key">N</span> - Открыть/закрыть блокнот</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4><i class="fas fa-mouse-pointer"></i> Управление мышью</h4>
+                    <ul>
+                        <li><strong>ЛКМ на контейнер + перетаскивание</strong> - перемещение (+ выделение связей)</li>
+                        <li><strong>ПКМ на контейнер</strong> - блокировка/разблокировка окна</li>
+                        <li><strong>Клик на квадраты прогресса</strong> - отметить прогресс (12 уровней)</li>
+                        <li><strong>Двойной клик на описание контейнера</strong> - редактирование</li>
+                        <li><strong>Режим связей</strong>: клик на 1-й контейнер, затем на 2-й</li>
+                        <li><strong>Клик на линию связи</strong> - удалить связь (выделяется красным)</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4><i class="fas fa-sliders-h"></i> Панель управления</h4>
+                    <div class="controls-list ct">
+                        <div><img src="images/logo.png" alt="ERBY" class="logo-icon"
+                                style="width: 20px; height: 20px;">
+                        </div>
+                        <div>Открыть справку (F1)</div>
+
+                        <div><i class="fas fa-layer-group"></i></div>
+                        <div>Выбрать шаблон для начала</div>
+
+                        <div><i class="fas fa-folder-open"></i></div>
+                        <div>Загрузить из файла JSON</div>
+
+                        <div><i class="fas fa-save"></i></div>
+                        <div>Сохранить в браузере (S)</div>
+
+                        <div><i class="fas fa-file-export"></i></div>
+                        <div>Экспорт в JSON (Ctrl+S)</div>
+
+                        <div><i class="fas fa-project-diagram"></i></div>
+                        <div>Режим создания связей (C)</div>
+
+                        <div><i class="fas fa-pencil-alt"></i></div>
+                        <div>Блокнот с заметками (N)</div>
+
+                        <div><i class="fas fa-unlock"></i></div>
+                        <div>Блокировка всех окон (L)</div>
+
+                        <div><i class="fas fa-plus"></i></div>
+                        <div>Добавить новый контейнер</div>
+                    </div>
+                </div>
+
+                <div class="help-section">
+                    <h4><i class="fas fa-database"></i> Сохранение данных</h4>
+                    <ul>
+                        <li><strong>Автосохранение</strong> - при любых изменениях</li>
+                        <li><strong>LocalStorage</strong> - данные хранятся в вашем браузере</li>
+                        <li><strong>JSON экспорт/импорт</strong> - для резервных копий</li>
+                    </ul>
+
+                    <h4><i class="fas fa-sticky-note"></i> Блокнот</h4>
+                    <ul>
+                        <li><strong>Автосохранение</strong> - все изменения сохраняются автоматически</li>
+                        <li><strong>Форматирование</strong> - используйте панель инструментов для форматирования текста
+                        </li>
+                        <li><strong>Экспорт</strong> - можно экспортировать заметки отдельным файлом</li>
+                        <li><strong>Статистика</strong> - отслеживайте количество символов, строк и слов</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="help-footer">
+                <p><img src="images/logo.png" alt="ERBY" class="logo-icon"
+                        style="max-height: 12px; margin-right: -8px;"><strong class="bold">ERBY</strong> • Easy Roadmap
+                    Builder of Yalkee</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="templatesModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="editor-header">
+                <h3><i class="fas fa-layer-group"></i> Выбор шаблона</h3>
+                <button class="close-btn" onclick="closeTemplatesModal()">&times;</button>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <p style="color: #aaa; margin-bottom: 15px;">Выберите шаблон для начала работы. Текущие данные будут
+                    утеряны.</p>
+
+                <div class="template-card" data-template="empty" onclick="selectTemplate('empty')">
+                    <div class="template-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="template-info">
+                        <h4>Пустой шаблон</h4>
+                        <p>Начните с чистого листа</p>
+                    </div>
+                </div>
+
+                <div class="template-card" data-template="roadmap1" onclick="selectTemplate('roadmap1')">
+                    <div class="template-icon" style="background: #3c4385;">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <div class="template-info">
+                        <h4>Дорожная карта 1</h4>
+                        <p>Сложная разветвленная структура</p>
+                    </div>
+                </div>
+
+                <div class="template-card" data-template="roadmap2" onclick="selectTemplate('roadmap2')">
+                    <div class="template-icon" style="background: #204f2a;">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div class="template-info">
+                        <h4>Дорожная карта 2</h4>
+                        <p>Балансированная иерархия</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="confirmDialog"
+                style="display: none; background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #d32f2f;">
+                <h4 style="color: #ff6b6b; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle"></i> Внимание!
+                </h4>
+                <p id="confirmMessage" style="color: #ffa8a8;"></p>
+                <div class="modal-buttons" style="margin-top: 15px;">
+                    <button class="btn btn-secondary" onclick="cancelTemplate()">Отмена</button>
+                    <button id="confirmTemplateBtn" class="btn btn-danger">Продолжить</button>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeTemplatesModal()" style="flex: 1;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notepadModal" class="modal notepad-modal">
+        <div class="modal-content">
+            <div class="notepad-header">
+                <h3><i class="fas fa-sticky-note"></i> Блокнот</h3>
+                <button class="close-btn" onclick="toggleNotepad()">&times;</button>
+            </div>
+
+            <div class="notepad-body">
+                <textarea id="notepadText" placeholder="Начните вводить ваши заметки здесь..."></textarea>
+
+                <div class="notepad-controls">
+                    <div class="notepad-stats">
+                        Символов: <span class="char-count">0</span> |
+                        Строк: <span class="line-count">0</span> |
+                        Слов: <span class="word-count">0</span>
+                    </div>
+
+                    <div class="notepad-formatting-tools">
+                        <div class="font-size-control">
+                            <button class="font-size-btn" onclick="changeFontSize(-1)"
+                                title="Уменьшить шрифт">-</button>
+                            <span class="font-size-value" id="fontSizeValue">14</span>
+                            <button class="font-size-btn" onclick="changeFontSize(1)" title="Увеличить шрифт">+</button>
+                        </div>
+                        <button class="format-btn" onclick="formatText('bold')" title="Жирный (Ctrl+B)"><i
+                                class="fas fa-bold"></i></button>
+                        <button class="format-btn" onclick="formatText('italic')" title="Курсив (Ctrl+I)"><i
+                                class="fas fa-italic"></i></button>
+                        <button class="format-btn" onclick="formatText('underline')" title="Подчеркивание (Ctrl+U)"><i
+                                class="fas fa-underline"></i></button>
+                        <button class="format-btn" onclick="formatText('list')" title="Список"><i
+                                class="fas fa-list-ul"></i></button>
+                        <button class="format-btn" onclick="formatText('code')" title="Код"><i
+                                class="fas fa-code"></i></button>
+                        <button class="format-btn" onclick="formatText('link')" title="Ссылка"><i
+                                class="fas fa-link"></i></button>
+                        <button class="format-btn" onclick="clearNotepad()" title="Очистить"><i
+                                class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notepad-footer">
+                <div class="notepad-auto-save" id="autoSaveStatus">
+                    <div class="auto-save-indicator"></div>
+                    <span>Автосохранение включено</span>
+                </div>
+
+                <div class="notepad-actions">
+                    <button class="notepad-btn notepad-btn-success" onclick="exportNotes()">
+                        <i class="fas fa-download"></i> Экспорт заметок
+                    </button>
+                    <button class="notepad-btn notepad-btn-primary" onclick="toggleNotepad()">
+                        <i class="fas fa-check"></i> Готово
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
