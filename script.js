@@ -304,6 +304,16 @@ function isMobileDevice() {
 
 function initCanvasDrag() {
     const canvas = document.getElementById('roadmapCanvas');
+
+    canvas.style.userSelect = 'none';
+    canvas.style.webkitUserSelect = 'none';
+    canvas.style.msUserSelect = 'none';
+
+    canvas.addEventListener('selectstart', function (e) {
+        e.preventDefault();
+        return false;
+    });
+
     const mainArea = document.querySelector('.main-area');
 
     if (!canvas || !mainArea) return;
@@ -545,6 +555,66 @@ function initCanvasDrag() {
             }
         };
     }
+}
+
+function preventGlobalTextSelection() {
+    // Блокируем выделение по Ctrl+A
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+            const active = document.activeElement;
+            const isNotepad = active.closest('.notepad-editor') ||
+                active.id === 'notepadText';
+            const isInput = active.tagName === 'INPUT' ||
+                active.tagName === 'TEXTAREA';
+
+            // Если не блокнот и не поле ввода - блокируем
+            if (!isNotepad && !isInput) {
+                e.preventDefault();
+                showTooltip('Выделение текста отключено', 1500);
+                return false;
+            }
+        }
+    });
+
+    // Блокируем выделение мышью (кроме блокнота)
+    document.addEventListener('mousedown', function (e) {
+        const target = e.target;
+        const isNotepad = target.closest('.notepad-editor') ||
+            target.closest('.notepad-modal') ||
+            target.id === 'notepadText';
+        const isInput = target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA';
+
+        // Если не блокнот и не поле ввода - отключаем выделение
+        if (!isNotepad && !isInput) {
+            // Позволяем только одиночный клик для узлов/связей
+            if (e.detail > 1) { // Двойной/тройной клик
+                e.preventDefault();
+            }
+        }
+    }, true); // Используем capture phase
+
+    // Блокируем контекстное меню (кроме блокнота)
+    document.addEventListener('contextmenu', function (e) {
+        const target = e.target;
+        const isNotepad = target.closest('.notepad-editor') ||
+            target.id === 'notepadText';
+
+        if (!isNotepad) {
+            // Для узлов у нас своё контекстное меню (блокировка)
+            // Для остального - блокируем стандартное
+            if (!target.closest('.node')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Блокируем перетаскивание (drag-and-drop) изображений и ссылок
+    document.addEventListener('dragstart', function (e) {
+        if (!e.target.closest('.notepad-editor')) {
+            e.preventDefault();
+        }
+    });
 }
 
 function init() {
@@ -1080,6 +1150,12 @@ function canvasClick(e) {
 }
 
 function startDrag(e) {
+    if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+    } else if (document.selection) {
+        document.selection.empty();
+    }
+
     if (isConnecting) return;
 
     if (isModalOpen) return;

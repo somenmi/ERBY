@@ -1079,6 +1079,39 @@
             display: none;
         }
 
+
+        /*################## TEXT SELECTION CONTROL ##################*/
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+
+        }
+
+        .notepad-editor,
+        .notepad-editor * {
+            -webkit-touch-callout: default;
+            -webkit-user-select: text;
+            -khtml-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        .modal input,
+        .modal textarea,
+        #nodeTitle,
+        #nodeDesc,
+        #nodeColor {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
         /*################## RESPONSIVE STYLES ##################*/
         @media (max-height: 768px) {
             .hr {
