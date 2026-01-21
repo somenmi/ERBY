@@ -19,6 +19,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <style>
+        /*################## RESET & BASE STYLES ##################*/
         * {
             margin: 0;
             padding: 0;
@@ -33,8 +34,9 @@
             overflow: hidden;
         }
 
+        /*################## UTILITY CLASSES ##################*/
         .hr {
-            width: 70%;
+            width: 42px;
             height: 1px;
             background: rgba(255, 255, 255, 0.1);
             border: none;
@@ -51,12 +53,22 @@
             letter-spacing: 1px;
         }
 
+        /*################## MAIN LAYOUT ##################*/
         .container {
             display: flex;
             height: 100vh;
             background: #2d2d2d;
         }
 
+        .main-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #2d2d2d;
+            transition: background 0.5s ease;
+        }
+
+        /*################## SIDEBAR ##################*/
         .sidebar {
             width: 60px;
             background: #333;
@@ -65,6 +77,9 @@
             padding: 10px 0;
             position: relative;
             overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
         .sidebar button {
@@ -74,8 +89,6 @@
             padding: 15px;
             cursor: pointer;
             font-size: 20px;
-            position: relative;
-            flex-shrink: 0;
         }
 
         .sidebar button:hover {
@@ -91,28 +104,70 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 10px;
+            padding: 12px;
             font-size: 12px;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
             color: #aaa;
             opacity: 30%;
-            text-align: center;
+            text-align: left;
             line-height: 1.4;
             transform: rotate(-90deg);
             white-space: nowrap;
             letter-spacing: 0.4px;
-            background: #333;
             margin-top: auto;
+            margin-bottom: -54px;
+            min-width: 200px;
+            transform-origin: top left;
         }
 
-        .main-area {
-            flex: 1;
+        /*################## LOGO & ANIMATIONS ##################*/
+        .logo-btn {
+            background: none;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
             position: relative;
-            overflow: hidden;
-            background: #2d2d2d;
-            transition: background 0.5s ease;
         }
 
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
+            animation: hueRotate 10s infinite linear;
+            border-radius: 6px;
+        }
+
+        .logo-btn:hover .logo-icon {
+            transform: scale(1.1);
+        }
+
+        @keyframes hueRotate {
+            0% {
+                filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
+            }
+
+            100% {
+                filter: hue-rotate(360deg) saturate(1.5) brightness(1.2);
+            }
+        }
+
+        @supports not (filter: hue-rotate(0deg)) {
+            .logo-icon {
+                animation: none;
+            }
+
+            .logo-btn:hover .logo-icon {
+                filter: brightness(1.3);
+            }
+        }
+
+        /*################## GRID BACKGROUND ##################*/
         .grid-background {
             position: absolute;
             top: 0;
@@ -123,7 +178,7 @@
             z-index: 1;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 1.2s ease;
             overflow: hidden;
         }
 
@@ -154,27 +209,19 @@
             }
         }
 
+        /*################## CANVAS & ROADMAP ##################*/
         #roadmapCanvas {
             position: relative;
             z-index: 2;
             width: 100%;
             height: 100%;
             background: transparent;
+            overflow: hidden;
+            cursor: default;
+            touch-action: auto;
         }
 
-        .tooltip {
-            z-index: 1000;
-        }
-
-        .modal input,
-        .modal textarea,
-        #notepadText {
-            user-select: text;
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-        }
-
+        /*################## NODES ##################*/
         .node {
             position: absolute;
             border-radius: 8px;
@@ -185,7 +232,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             border: 2px solid #5c6bc0;
             z-index: 10;
-            transition: all 0.1s linear;
             will-change: transform, left, top;
             user-select: none;
             -webkit-user-select: none;
@@ -199,7 +245,7 @@
 
         .node.selected {
             box-shadow: 0 0 0 2px #ffd000, 0 4px 16px rgba(0, 0, 0, 0.4);
-            z-index: 101;
+            z-index: 205;
         }
 
         .node-header {
@@ -239,8 +285,18 @@
             text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
         }
 
+        .lock-status {
+            position: absolute;
+            top: 5px;
+            left: 200px;
+            font-size: 11px;
+            color: #ff9800;
+        }
+
+        /*################## PROGRESS SCALE ##################*/
         .progress-scale {
             display: flex;
+            justify-content: center;
             flex-wrap: wrap;
             gap: 1.5px;
             margin-top: 2px;
@@ -248,11 +304,10 @@
         }
 
         .progress-square {
-            width: 14px;
-            height: 14px;
+            width: 14.5px;
+            height: 14.5px;
             border-radius: 3px;
             cursor: pointer;
-            transition: transform 0.3s ease, background-color 0.5s ease;
             border: 1px solid rgba(44, 44, 44, 0.4);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
@@ -262,6 +317,7 @@
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
         }
 
+        /*################## CONNECTIONS ##################*/
         .connection {
             position: absolute;
             background: #798aeb;
@@ -300,6 +356,7 @@
             border-left-color: #ffd000;
         }
 
+        /*################## MODALS (GENERAL) ##################*/
         .modal {
             position: fixed;
             top: 0;
@@ -319,22 +376,43 @@
             border-radius: 8px;
             width: 620px;
             max-width: 1200px;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
-        .help-modal .modal-content {
-            width: 710px;
-            height: 900px;
+        .modal input,
+        .modal textarea,
+        #notepadText {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
 
         .modal input,
         .modal textarea {
             width: 100%;
+            max-height: 620px;
             padding: 8px;
             margin: 5px 0 15px;
             background: #444;
             border: 1px solid #555;
             color: white;
             border-radius: 4px;
+        }
+
+        #nodeDesc {
+            min-width: 100%;
+            max-width: 100%;
+            min-height: 36px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 3rem;
+            cursor: pointer;
+            color: #aaa;
         }
 
         .modal-buttons {
@@ -365,26 +443,14 @@
             color: white;
         }
 
-        .lock-status {
-            position: absolute;
-            top: 5px;
-            left: 200px;
-            font-size: 11px;
-            color: #ff9800;
-        }
-
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: nowrap;
-            z-index: 1000;
-            display: none;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        /*################## NODE EDITOR MODAL ##################*/
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ffbb00;
         }
 
         .color-picker-container {
@@ -394,39 +460,40 @@
             margin: 10px 0;
         }
 
-        .color-option {
-            width: 25px;
-            height: 25px;
-            border-radius: 4px;
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-
-        .color-option:hover {
-            transform: scale(1.1);
-        }
-
-        .color-option.selected {
-            border-color: white;
-        }
-
-        .editor-header {
+        .custom-color-picker {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #3949ab;
+            gap: 16px;
+            margin: 0;
         }
 
-        .close-btn {
-            background: none;
+        .native-color-input {
+            width: 50px;
+            height: 64px;
             border: none;
-            font-size: 3rem;
+            background: transparent;
             cursor: pointer;
-            color: #aaa;
+            padding: 0;
         }
 
+        .native-color-input::-webkit-color-swatch {
+            border-radius: 4px;
+            border: 2px solid #555;
+        }
+
+        .native-color-input::-moz-color-swatch {
+            border-radius: 4px;
+            border: 2px solid #555;
+        }
+
+        .native-color-hex {
+            height: 64px;
+            font-weight: 600;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        /*################## TEMPLATES MODAL ##################*/
         .template-card {
             display: flex;
             align-items: center;
@@ -435,7 +502,6 @@
             border-radius: 8px;
             margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.3s ease;
             border: 2px solid transparent;
         }
 
@@ -478,49 +544,18 @@
             font-size: 14px;
         }
 
-        .custom-color-picker {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin: 0;
-        }
-
-        .native-color-input {
-            width: 50px;
-            height: 64px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            padding: 0;
-        }
-
-        .native-color-input::-webkit-color-swatch {
-            border-radius: 4px;
-            border: 2px solid #555;
-        }
-
-        .native-color-input::-moz-color-swatch {
-            border-radius: 4px;
-            border: 2px solid #555;
-        }
-
-        .native-color-hex {
-            height: 64px;
-            font-weight: 600;
-            font-size: 24px;
-            text-align: center;
+        /*################## HELP MODAL ##################*/
+        .help-modal .modal-content {
+            width: 710px;
+            height: 900px;
         }
 
         .help-content {
-            max-height: 740px;
+            max-height: 726px;
             overflow-y: auto;
             padding-right: 10px;
             scrollbar-width: none;
             -ms-overflow-style: none;
-        }
-
-        .help-content::-webkit-scrollbar {
-            display: none;
         }
 
         .help-section {
@@ -575,9 +610,10 @@
             font-size: 12px;
         }
 
+        /*################## NOTEPAD MODAL ##################*/
         .notepad-modal .modal-content {
             width: 120vh;
-            max-height: 80vh;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
         }
@@ -605,6 +641,89 @@
             overflow-y: auto;
         }
 
+        /*################## NOTEPAD EDITOR ##################*/
+        .notepad-editor {
+            width: 100%;
+            min-height: 400px;
+            max-height: 600px;
+            padding: 15px;
+            background: #47463f;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-y: auto;
+            resize: vertical;
+            transition: border-color 0.3s;
+            margin-bottom: 10px;
+            outline: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .notepad-editor:focus {
+            outline: none;
+            border-color: #ffbb00;
+            box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+        }
+
+        .notepad-editor[placeholder]:empty:before {
+            content: attr(placeholder);
+            color: #888;
+            pointer-events: none;
+            display: block;
+        }
+
+        .notepad-editor b,
+        .notepad-editor strong {
+            font-weight: bold;
+            color: inherit;
+        }
+
+        .notepad-editor i,
+        .notepad-editor em {
+            font-style: italic;
+            color: inherit;
+        }
+
+        .notepad-editor u {
+            text-decoration: underline;
+            color: inherit;
+        }
+
+        .notepad-editor code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #ffd700;
+            border: 1px solid #666;
+        }
+
+        .notepad-editor a {
+            color: #64b5f6;
+            text-decoration: underline;
+        }
+
+        .notepad-editor a:hover {
+            color: #90caf9;
+        }
+
+        .notepad-editor ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .notepad-editor li {
+            margin-bottom: 5px;
+        }
+
+        .notepad-editor span[style*="color"] {
+            color: inherit;
+        }
+
         #notepadText {
             width: 100%;
             height: 400px;
@@ -621,20 +740,197 @@
             margin-bottom: 10px;
         }
 
-        #notepadText:focus {
-            outline: none;
-            border-color: #ffbb00;
-            box-shadow: 0 0 0 2px rgba(92, 107, 192, 0.2);
+        /*################## NOTEPAD CONTROLS & TOOLS ##################*/
+        .notepad-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-        .notepad-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #444;
-            background: #47463f;
-            border-radius: 0 0 8px 8px;
-            text-align: right;
+        .notepad-formatting-tools {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
+        .format-btn {
+            position: relative;
+            padding: 6px;
+            background: #444;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            box-sizing: border-box;
+        }
+
+        .format-btn:hover {
+            background: #555;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .format-btn:hover::before {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            margin-bottom: 5px;
+        }
+
+        .notepad-controls .format-btn:hover::before {
+            bottom: 100%;
+            margin-bottom: 5px;
+        }
+
+        .format-btn.separator {
+            margin-right: 15px;
+            position: relative;
+        }
+
+        .format-btn.separator::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 5px;
+            height: 26px;
+            width: 1px;
+            background: #555;
+        }
+
+        .format-btn i {
+            font-size: 12px;
+        }
+
+        /*################## COLOR BUTTONS ##################*/
+        .color-btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 3px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+
+        .color-btn:hover::after {
+            transform: translateX(-50%) scaleX(1.2);
+        }
+
+        .color-btn:hover::before {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1001;
+            pointer-events: none;
+            margin-bottom: 5px;
+        }
+
+        #customColorPicker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #444;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            box-sizing: border-box;
+        }
+
+        #customColorPicker::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+
+        #customColorPicker::-webkit-color-swatch {
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        #customColorPicker::-moz-color-swatch {
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        /*################## NOTEPAD FONT SIZE CONTROL ##################*/
+        .font-size-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #444;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 2px 6px;
+            height: 36px;
+            box-sizing: border-box;
+        }
+
+        .font-size-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .font-size-btn:hover {
+            background: #555;
+            color: white;
+        }
+
+        .font-size-value {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 24px;
+            text-align: center;
+            user-select: none;
+        }
+
+        /*################## NOTEPAD STATS & STATUS ##################*/
         .notepad-stats {
             font-size: 12px;
             color: #888;
@@ -692,6 +988,7 @@
             animation: none;
         }
 
+        /*################## NOTEPAD ACTIONS ##################*/
         .notepad-actions {
             display: flex;
             gap: 10px;
@@ -739,129 +1036,158 @@
             color: black;
         }
 
-        .notepad-formatting-tools {
-            display: flex;
-            gap: 5px;
-        }
-
-        .format-btn {
-            padding: 6px 10px;
-            background: #444;
-            border: 1px solid #555;
-            color: #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-        }
-
-        .format-btn:hover {
-            background: #555;
+        /*################## TOOLTIP ##################*/
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            transform: translateY(-1px);
-        }
-
-        .format-btn i {
-            font-size: 12px;
-        }
-
-        .notepad-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 6px;
-        }
-
-        .font-size-control {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            margin-right: 10px;
-            background: #444;
-            border: 1px solid #555;
+            padding: 5px 10px;
             border-radius: 4px;
-            padding: 2px 5px;
-        }
-
-        .font-size-btn {
-            background: none;
-            border: none;
-            color: #ccc;
-            width: 24px;
-            height: 24px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .font-size-btn:hover {
-            background: #555;
-            color: white;
-        }
-
-        .font-size-value {
-            color: #fff;
             font-size: 12px;
-            font-weight: 600;
-            min-width: 24px;
-            text-align: center;
-            user-select: none;
+            white-space: nowrap;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .logo-btn {
-            background: none;
-            border: none;
-            padding: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 60px;
-            height: 60px;
-            position: relative;
+        /*################## SCROLLBAR HIDING ##################*/
+        .sidebar::-webkit-scrollbar,
+        .modal-content::-webkit-scrollbar,
+        .modal-content textarea::-webkit-scrollbar,
+        .help-content::-webkit-scrollbar,
+        .notepad-body::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
         }
 
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            object-fit: contain;
-            filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
-            animation: hueRotate 10s infinite linear;
-            transition: transform 0.3s ease;
-            border-radius: 6px;
+        .sidebar,
+        .modal-content,
+        .modal-content textarea,
+        .help-content,
+        .notepad-body {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
-        .logo-btn:hover .logo-icon {
-            transform: scale(1.1);
+        .help-content::-webkit-scrollbar {
+            display: none;
         }
 
-        @keyframes hueRotate {
-            0% {
-                filter: hue-rotate(0deg) saturate(1.5) brightness(1.2);
+        .sidebar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /*################## RESPONSIVE STYLES ##################*/
+        @media (max-height: 768px) {
+            .hr {
+                width: 32px;
+                height: 2px;
+                margin: 10px auto;
             }
 
-            100% {
-                filter: hue-rotate(360deg) saturate(1.5) brightness(1.2);
+            .modal-content {
+                width: 95vw;
+                max-height: 85vh;
+                margin: 10px;
+            }
+
+            .sidebar-help {
+                font-size: 0;
+            }
+
+            .sidebar {
+                padding: 0 0;
+            }
+
+            .sidebar button {
+                background: none;
+                border: none;
+                color: white;
+                padding: 16px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+
+            .notepad-formatting-tools {
+                gap: 8px;
+            }
+
+            .font-size-control {
+                display: flex;
+                align-items: center;
+                gap: 76px;
+                background: #444;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 2px 6px;
+                height: 36px;
+                box-sizing: border-box;
+            }
+
+            .notepad-auto-save {
+                margin-bottom: 10px;
             }
         }
 
-        @supports not (filter: hue-rotate(0deg)) {
-            .logo-icon {
-                animation: none;
+        @media (max-width: 768px) {
+            .hr {
+                width: 32px;
+                height: 1px;
             }
 
-            .logo-btn:hover .logo-icon {
-                filter: brightness(1.3);
+            .modal-content {
+                width: 95vw;
+                max-height: 85vh;
+                margin: 10px;
+            }
+
+            .node {
+                width: 180px;
+                min-height: 40px;
+            }
+
+            .progress-scale {
+                justify-content: center;
+            }
+
+            .progress-square {
+                width: 11px;
+                height: 11px;
+            }
+
+            .sidebar-help {
+                font-size: 0;
+            }
+
+            .format-btn {
+                width: 80px;
+                height: 40px;
+            }
+
+            .color-btn {
+                gap: 0;
+            }
+
+            .notepad-formatting-tools {
+                gap: 8px;
+            }
+
+            .font-size-control {
+                display: flex;
+                align-items: center;
+                gap: 76px;
+                background: #444;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 2px 6px;
+                height: 36px;
+                box-sizing: border-box;
+            }
+
+            .notepad-auto-save {
+                margin-bottom: 10px;
             }
         }
     </style>
@@ -1013,8 +1339,7 @@
                 <div class="help-section">
                     <h4><i class="fas fa-sliders-h"></i> Панель управления</h4>
                     <div class="controls-list ct">
-                        <div><img src="images/logo.png" alt="ERBY" class="logo-icon"
-                                style="width: 20px; height: 20px;">
+                        <div><img src="images/logo.png" alt="ERBY" class="logo-icon" style="width: 20px; height: 20px;">
                         </div>
                         <div>Открыть справку (F1)</div>
 
@@ -1138,7 +1463,9 @@
             </div>
 
             <div class="notepad-body">
-                <textarea id="notepadText" placeholder="Начните вводить ваши заметки здесь..."></textarea>
+                <div id="notepadEditor" contenteditable="true" class="notepad-editor"
+                    placeholder="Начните вводить ваши заметки здесь...">
+                </div>
 
                 <div class="notepad-controls">
                     <div class="notepad-stats">
@@ -1154,20 +1481,63 @@
                             <span class="font-size-value" id="fontSizeValue">14</span>
                             <button class="font-size-btn" onclick="changeFontSize(1)" title="Увеличить шрифт">+</button>
                         </div>
-                        <button class="format-btn" onclick="formatText('bold')" title="Жирный (Ctrl+B)"><i
-                                class="fas fa-bold"></i></button>
-                        <button class="format-btn" onclick="formatText('italic')" title="Курсив (Ctrl+I)"><i
-                                class="fas fa-italic"></i></button>
-                        <button class="format-btn" onclick="formatText('underline')" title="Подчеркивание (Ctrl+U)"><i
-                                class="fas fa-underline"></i></button>
-                        <button class="format-btn" onclick="formatText('list')" title="Список"><i
-                                class="fas fa-list-ul"></i></button>
-                        <button class="format-btn" onclick="formatText('code')" title="Код"><i
-                                class="fas fa-code"></i></button>
-                        <button class="format-btn" onclick="formatText('link')" title="Ссылка"><i
-                                class="fas fa-link"></i></button>
-                        <button class="format-btn" onclick="clearNotepad()" title="Очистить"><i
-                                class="fas fa-trash-alt"></i></button>
+
+                        <div style="width: 4px; display: inline-block;"></div>
+
+                        <button class="format-btn color-btn" onclick="applyColor('#ffffff')" title="Белый"
+                            style="color: #ffffff;">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <button class="format-btn color-btn" onclick="applyColor('#2196F3')" title="Синий"
+                            style="color: #2196F3;">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <button class="format-btn color-btn" onclick="applyColor('#ff6b6b')" title="Красный"
+                            style="color: #ff6b6b;">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <button class="format-btn color-btn" onclick="applyColor('#4CAF50')" title="Зеленый"
+                            style="color: #4CAF50;">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <button class="format-btn color-btn" onclick="applyColor('#FFD700')" title="Желтый"
+                            style="color: #FFD700;">
+                            <i class="fas fa-palette"></i>
+                        </button>
+
+                        <div style="width: 4px; display: inline-block;"></div>
+
+                        <!-- Основные кнопки форматирования -->
+                        <button class="format-btn" onclick="formatText('bold')" title="Жирный (Ctrl+B)">
+                            <i class="fas fa-bold"></i>
+                        </button>
+                        <button class="format-btn" onclick="formatText('italic')" title="Курсив (Ctrl+I)">
+                            <i class="fas fa-italic"></i>
+                        </button>
+                        <button class="format-btn" onclick="formatText('underline')" title="Подчеркивание (Ctrl+U)">
+                            <i class="fas fa-underline"></i>
+                        </button>
+                        <button class="format-btn" onclick="removeFormatting()" title="Удалить форматирование">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+
+                        <div style="width: 4px; display: inline-block;"></div>
+
+                        <button class="format-btn" onclick="formatText('list')" title="Список">
+                            <i class="fas fa-list-ul"></i>
+                        </button>
+                        <button class="format-btn" onclick="insertCode()" title="Код">
+                            <i class="fas fa-code"></i>
+                        </button>
+                        <button class="format-btn" onclick="insertLink()" title="Ссылка">
+                            <i class="fas fa-link"></i>
+                        </button>
+
+                        <div style="width: 4px; display: inline-block;"></div>
+
+                        <button class="format-btn" onclick="clearNotepad()" title="Очистить">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>

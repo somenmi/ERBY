@@ -18,6 +18,13 @@ let mouseIsDown = false;
 let isDragging = false;
 let dragStartX, dragStartY;
 
+let isCanvasDragging = false;
+let canvasStartX = 0;
+let canvasStartY = 0;
+let canvasScrollLeft = 0;
+let canvasScrollTop = 0;
+let isTouchDevice = false;
+
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
@@ -70,6 +77,476 @@ function registerServiceWorker() {
     }
 }
 
+function updateNotepadContent() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    notepadContent = editor.innerHTML;
+    updateStats();
+
+    if (isNotepadOpen) {
+        showAutoSaveStatus('saving');
+    }
+
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+
+    autoSaveTimeout = setTimeout(() => {
+        saveNotepadContent();
+        autoSaveTimeout = null;
+    }, 1000);
+}
+
+function applyColor(color) {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    const selection = window.getSelection();
+    const savedSelection = selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+
+    editor.focus();
+
+    if (savedSelection) {
+        selection.removeAllRanges();
+        selection.addRange(savedSelection);
+    }
+
+    if (selection.isCollapsed || selection.toString().trim() === '') {
+        showTooltip('Выделите текст для окрашивания', 1500);
+        return;
+    }
+
+    try {
+        document.execCommand('foreColor', false, color);
+    } catch (e) {
+        const selectedText = selection.toString();
+        const span = document.createElement('span');
+        span.style.color = color;
+        span.textContent = selectedText;
+
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(span);
+
+        selection.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.setStartAfter(span);
+        newRange.collapse(true);
+        selection.addRange(newRange);
+    }
+
+    updateNotepadContent();
+    editor.focus();
+
+    const colorName = getColorName(color);
+    showTooltip(`Текст окрашен в ${colorName}`, 1500);
+}
+
+function getColorName(hex) {
+    const colors = {
+        '#ff6b6b': 'Красный',
+        '#4caf50': 'Зеленый',
+        '#ffd700': 'Желтый',
+        '#2196f3': 'Синий',
+        '#9c27b0': 'Фиолетовый',
+        '#ff9800': 'Оранжевый',
+        '#00bcd4': 'Бирюзовый',
+        '#795548': 'Коричневый'
+    };
+    return colors[hex.toLowerCase()] || 'выбранный цвет';
+}
+
+function removeFormatting() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (selection.isCollapsed) {
+        showTooltip('Выделите текст для очистки форматирования', 1500);
+        return;
+    }
+
+    document.execCommand('removeFormat', false, null);
+
+    updateNotepadContent();
+    editor.focus();
+
+    showTooltip('Форматирование удалено', 1500);
+}
+
+function insertLink() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (selection.isCollapsed) {
+        showTooltip('Выделите текст для создания ссылки', 1500);
+        return;
+    }
+
+    const url = prompt('Введите URL ссылки:', 'https://');
+    if (url) {
+        try {
+            document.execCommand('createLink', false, url);
+        } catch (e) {
+            document.execCommand('insertHTML', false,
+                `<a href="${url}" target="_blank">${selection.toString()}</a>`);
+        }
+
+        updateNotepadContent();
+        editor.focus();
+
+        showTooltip('Ссылка добавлена', 1500);
+    }
+}
+
+function insertCode() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (selection.isCollapsed) {
+        document.execCommand('insertHTML', false, '<code>код</code>&nbsp;');
+    } else {
+        document.execCommand('insertHTML', false,
+            `<code>${selection.toString()}</code>`);
+    }
+
+    updateNotepadContent();
+    editor.focus();
+}
+
+function setupNotepadAutosave() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    let saveTimeout = null;
+
+    const triggerSave = () => {
+        updateNotepadContent();
+    };
+
+    editor.addEventListener('input', triggerSave);
+    editor.addEventListener('keydown', triggerSave);
+    editor.addEventListener('keyup', triggerSave);
+    editor.addEventListener('paste', triggerSave);
+    editor.addEventListener('cut', triggerSave);
+    editor.addEventListener('change', triggerSave);
+
+    editor.addEventListener('click', () => {
+        setTimeout(triggerSave, 100);
+    });
+
+    editor.addEventListener('keydown', (e) => {
+        if (e.ctrlKey) {
+            switch (e.key.toLowerCase()) {
+                case 'b':
+                    e.preventDefault();
+                    setTimeout(() => formatText('bold'), 10);
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    setTimeout(() => formatText('italic'), 10);
+                    break;
+                case 'u':
+                    e.preventDefault();
+                    setTimeout(() => formatText('underline'), 10);
+                    break;
+                case 's':
+                    e.preventDefault();
+                    saveNotepadContent();
+                    showTooltip('Заметки сохранены', 1500);
+                    break;
+                case 'k':
+                    e.preventDefault();
+                    setTimeout(() => insertLink(), 10);
+                    break;
+            }
+        }
+    });
+
+    const fontSizeControls = document.querySelectorAll('.font-size-btn');
+    fontSizeControls.forEach(btn => {
+        const originalClick = btn.onclick;
+        if (originalClick) {
+            btn.onclick = function () {
+                originalClick.call(this);
+                setTimeout(triggerSave, 100);
+            };
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        saveNotepadContent();
+    });
+}
+
+function isMobileDevice() {
+    const isTouchDevice = 'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0;
+
+    const isSmallScreen = window.innerWidth <= 768 ||
+        window.innerHeight <= 768;
+
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+
+    return (isTouchDevice && isSmallScreen) || isMobileUserAgent;
+}
+
+function initCanvasDrag() {
+    const canvas = document.getElementById('roadmapCanvas');
+    const mainArea = document.querySelector('.main-area');
+
+    if (!canvas || !mainArea) return;
+
+    isTouchDevice = 'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0;
+
+    console.log('Touch устройство:', isTouchDevice ? 'Да' : 'Нет');
+
+    if (!isTouchDevice) {
+        console.log('Десктопное устройство, перетаскивание отключено');
+        setupDesktopMode();
+        return;
+    }
+
+    console.log('Touch устройство, настраиваем перетаскивание...');
+    setupTouchMode();
+
+    // ################### НАСТРОЙКА TOUCH РЕЖИМА ###################
+    function setupTouchMode() {
+        mainArea.style.overflow = 'auto';
+        mainArea.style.webkitOverflowScrolling = 'touch';
+
+        canvas.style.cursor = 'grab';
+        canvas.style.touchAction = 'none';
+
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        canvas.addEventListener('mousedown', handleMouseDown);
+
+        updateCanvasSize();
+
+        addTouchHint();
+    }
+
+    function setupDesktopMode() {
+        mainArea.style.overflow = 'hidden';
+        canvas.style.cursor = 'default';
+
+        console.log('Десктоп: контейнеры остаются на своих местах');
+    }
+
+    // ################### ОБРАБОТЧИКИ СОБЫТИЙ ###################
+    function handleTouchStart(e) {
+        if (e.target.closest('.node') || e.target.closest('.connection')) {
+            return;
+        }
+
+        if (e.touches.length === 1) {
+            e.preventDefault();
+            isCanvasDragging = true;
+            const touch = e.touches[0];
+            canvasStartX = touch.clientX;
+            canvasStartY = touch.clientY;
+            canvasScrollLeft = mainArea.scrollLeft;
+            canvasScrollTop = mainArea.scrollTop;
+
+            canvas.style.cursor = 'grabbing';
+        }
+    }
+
+    function handleTouchMove(e) {
+        if (!isCanvasDragging || e.touches.length !== 1) return;
+
+        e.preventDefault();
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - canvasStartX;
+        const deltaY = touch.clientY - canvasStartY;
+
+        const newScrollLeft = canvasScrollLeft - deltaX;
+        const newScrollTop = canvasScrollTop - deltaY;
+
+        const maxScrollLeft = Math.max(0, canvas.scrollWidth - mainArea.clientWidth);
+        const maxScrollTop = Math.max(0, canvas.scrollHeight - mainArea.clientHeight);
+
+        mainArea.scrollLeft = Math.max(0, Math.min(newScrollLeft, maxScrollLeft));
+        mainArea.scrollTop = Math.max(0, Math.min(newScrollTop, maxScrollTop));
+    }
+
+    function handleTouchEnd(e) {
+        if (!isCanvasDragging) return;
+
+        if (e.changedTouches && e.changedTouches[0]) {
+            const touch = e.changedTouches[0];
+            const deltaX = touch.clientX - canvasStartX;
+            const deltaY = touch.clientY - canvasStartY;
+
+            applyInertia(deltaX * 0.3, deltaY * 0.3);
+        }
+
+        isCanvasDragging = false;
+        canvas.style.cursor = 'grab';
+    }
+
+    function handleMouseDown(e) {
+        if (e.target.closest('.node') || e.target.closest('.connection')) {
+            return;
+        }
+
+        if (e.button === 0) {
+            e.preventDefault();
+            isCanvasDragging = true;
+            canvasStartX = e.clientX;
+            canvasStartY = e.clientY;
+            canvasScrollLeft = mainArea.scrollLeft;
+            canvasScrollTop = mainArea.scrollTop;
+
+            canvas.style.cursor = 'grabbing';
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+    }
+
+    function handleMouseMove(e) {
+        if (!isCanvasDragging) return;
+
+        e.preventDefault();
+        const deltaX = e.clientX - canvasStartX;
+        const deltaY = e.clientY - canvasStartY;
+
+        const newScrollLeft = canvasScrollLeft - deltaX;
+        const newScrollTop = canvasScrollTop - deltaY;
+
+        const maxScrollLeft = Math.max(0, canvas.scrollWidth - mainArea.clientWidth);
+        const maxScrollTop = Math.max(0, canvas.scrollHeight - mainArea.clientHeight);
+
+        mainArea.scrollLeft = Math.max(0, Math.min(newScrollLeft, maxScrollLeft));
+        mainArea.scrollTop = Math.max(0, Math.min(newScrollTop, maxScrollTop));
+    }
+
+    function handleMouseUp(e) {
+        if (!isCanvasDragging) return;
+
+        const deltaX = e.clientX - canvasStartX;
+        const deltaY = e.clientY - canvasStartY;
+
+        applyInertia(deltaX * 0.3, deltaY * 0.3);
+
+        isCanvasDragging = false;
+        canvas.style.cursor = 'grab';
+
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    }
+
+    function applyInertia(velocityX, velocityY) {
+        let momentumX = velocityX;
+        let momentumY = velocityY;
+
+        function applyMomentum() {
+            if (Math.abs(momentumX) > 0.1 || Math.abs(momentumY) > 0.1) {
+                const currentScrollLeft = mainArea.scrollLeft;
+                const currentScrollTop = mainArea.scrollTop;
+
+                const maxScrollLeft = Math.max(0, canvas.scrollWidth - mainArea.clientWidth);
+                const maxScrollTop = Math.max(0, canvas.scrollHeight - mainArea.clientHeight);
+
+                const newScrollLeft = Math.max(0, Math.min(currentScrollLeft - momentumX, maxScrollLeft));
+                const newScrollTop = Math.max(0, Math.min(currentScrollTop - momentumY, maxScrollTop));
+
+                mainArea.scrollLeft = newScrollLeft;
+                mainArea.scrollTop = newScrollTop;
+
+                momentumX *= 0.95;
+                momentumY *= 0.95;
+
+                requestAnimationFrame(applyMomentum);
+            }
+        }
+
+        applyMomentum();
+    }
+
+    // ################### ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ###################
+    function updateCanvasSize() {
+        if (!isTouchDevice) return;
+
+        let maxX = 0;
+        let maxY = 0;
+
+        nodes.forEach(node => {
+            maxX = Math.max(maxX, node.x + 250);
+            maxY = Math.max(maxY, node.y + 150);
+        });
+
+        canvas.style.minWidth = (maxX + 100) + 'px';
+        canvas.style.minHeight = (maxY + 100) + 'px';
+    }
+
+    function addTouchHint() {
+        const hint = document.createElement('div');
+        hint.innerHTML = '👆 Перетащите экран для перемещения';
+        hint.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #ffd000;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            pointer-events: none;
+            animation: fadeHint 5s ease-in-out forwards;
+        `;
+
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                @keyframes fadeHint {
+                    0% { opacity: 0; transform: translateY(20px); }
+                    15% { opacity: 1; transform: translateY(0); }
+                    90% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(20px); }
+                }
+            </style>
+        `);
+
+        document.body.appendChild(hint);
+
+        setTimeout(() => {
+            if (hint.parentNode) {
+                hint.parentNode.removeChild(hint);
+            }
+        }, 5000);
+    }
+
+    window.addEventListener('resize', updateCanvasSize);
+
+    const originalRenderAll = window.renderAll;
+    if (originalRenderAll) {
+        window.renderAll = function () {
+            originalRenderAll.apply(this, arguments);
+            if (isTouchDevice) {
+                setTimeout(updateCanvasSize, 50);
+            }
+        };
+    }
+}
+
 function init() {
     loadData();
     renderAll();
@@ -78,14 +555,21 @@ function init() {
     setInterval(updateClock, 1000);
     updateClock();
     registerServiceWorker();
+    initCanvasDrag();
 
     gridBackground = document.getElementById('gridBackground');
 
     checkAllNodesLocked();
 
+    document.addEventListener('wheel', function (e) {
+        if (e.deltaX !== 0) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
     if (!localStorage.getItem('roadmapFirstRun')) {
         setTimeout(() => {
-            if (confirm('Привет! Это ваш первый запуск ERBY: Easy Roadmap Builder of Yalkee. Хотите посмотреть справку? (Справка - иконка в верхнем левом углу')) {
+            if (confirm('Привет! Это ваш первый запуск ERBY: Easy Roadmap Builder of Yalkee. Хотите посмотреть справку? (Справка - иконка в верхнем левом углу)')) {
                 showHelp();
             }
             setTimeout(() => {
@@ -98,6 +582,25 @@ function init() {
         }, 1000);
         localStorage.setItem('roadmapFirstRun', 'true');
     }
+
+    setTimeout(() => {
+        const editor = document.getElementById('notepadEditor');
+        if (editor) {
+            editor.style.fontSize = currentFontSize + 'px';
+
+            editor.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+                updateNotepadContent();
+            });
+
+            const colorPicker = document.getElementById('customColorPicker');
+            if (colorPicker) {
+                colorPicker.value = '#000000';
+            }
+        }
+    }, 100);
 }
 
 function setupEventListeners() {
@@ -289,15 +792,12 @@ function toggleProgressSquare(node, index, event) {
     const isCurrentlyActive = node.progress[index] === 1;
 
     if (isCurrentlyActive && index === 0) {
-        // Если кликнули на первый активный квадрат - сбрасываем все
         node.progress.fill(0);
     } else if (isCurrentlyActive) {
-        // Если кликнули на активный квадрат (не первый) - сбрасываем все после него
         for (let i = 0; i < 12; i++) {
             node.progress[i] = i <= index ? 1 : 0;
         }
     } else {
-        // Если кликнули на неактивный квадрат - заполняем до него включительно
         for (let i = 0; i < 12; i++) {
             node.progress[i] = i <= index ? 1 : 0;
         }
@@ -365,7 +865,6 @@ function toggleLockNode(node, event) {
             gridBackground.classList.remove('active');
         }
 
-        // Блокируем/разблокируем конкретный узел
         node.locked = !node.locked;
 
         showTooltip(`Общая блокировка снята. Контейнер "${node.title}" ${node.locked ? 'заблокирован' : 'разблокирован'}`, 2000);
@@ -445,15 +944,13 @@ function renderAll() {
         nodeEl.style.top = node.y + 'px';
         nodeEl.style.backgroundColor = node.color || '#3c4385';
 
-        // Если узел заблокирован
         if (node.locked) {
             nodeEl.classList.add('locked');
             nodeEl.style.cursor = 'default';
         }
 
-        // Если выбранный узел и мышь нажата - сохраняем выделение
         if (selectedNode && selectedNode.id === node.id && mouseIsDown) {
-            nodeEl.style.zIndex = '100';
+            nodeEl.style.zIndex = '205';
             nodeEl.style.boxShadow = '0 0 0 2px #ffd000, 0 4px 16px rgba(0, 0, 0, 0.4)';
         }
 
@@ -533,7 +1030,6 @@ function renderAll() {
         canvas.appendChild(nodeEl);
     });
 
-    // Выделяем соединения выбранного узла если мышь нажата
     if (selectedNode && mouseIsDown) {
         highlightNodeConnections(selectedNode.id, true);
     }
@@ -607,7 +1103,6 @@ function startDrag(e) {
     offsetY = e.clientY - node.y;
     mouseIsDown = true;
 
-    // Добавление и выделение узла
     nodeEl.style.zIndex = '100';
     nodeEl.style.boxShadow = '0 0 0 2px #ffd000, 0 4px 16px rgba(0, 0, 0, 0.4)';
 
@@ -617,7 +1112,6 @@ function startDrag(e) {
 function drag(e) {
     if (!selectedNode || !mouseIsDown) return;
 
-    // Если включена общая блокировка - не перемещаем
     if (isAllLocked) {
         endDrag();
         return;
@@ -710,6 +1204,10 @@ function handleKeyPress(e) {
                     saveNotepadContent();
                     showTooltip('Заметки сохранены', 1500);
                     break;
+                case 'k':
+                    e.preventDefault();
+                    insertLink();
+                    break;
             }
         }
 
@@ -782,14 +1280,26 @@ function deleteNode(node) {
 }
 
 function saveData() {
+    if (isNotepadOpen) {
+        const editor = document.getElementById('notepadEditor');
+        if (editor) {
+            notepadContent = editor.innerHTML;
+        }
+    }
+
     const data = {
         nodes,
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.0'
+        version: '1.1'
     };
-    localStorage.setItem('roadmapData', JSON.stringify(data));
+
+    try {
+        localStorage.setItem('roadmapData', JSON.stringify(data));
+    } catch (e) {
+        console.error('Ошибка сохранения:', e);
+    }
 }
 
 function loadData() {
@@ -811,6 +1321,13 @@ function loadData() {
             if (data.notepad) {
                 notepadContent = data.notepad;
                 localStorage.setItem('roadmapNotepad', notepadContent);
+
+                if (isNotepadOpen) {
+                    const editor = document.getElementById('notepadEditor');
+                    if (editor) {
+                        editor.innerHTML = notepadContent;
+                    }
+                }
             } else {
                 const oldNotepad = localStorage.getItem('roadmapNotepad');
                 if (oldNotepad) {
@@ -821,6 +1338,16 @@ function loadData() {
             if (data.notepadFontSize) {
                 currentFontSize = data.notepadFontSize;
                 localStorage.setItem('notepadFontSize', currentFontSize.toString());
+
+                const fontSizeValue = document.getElementById('fontSizeValue');
+                if (fontSizeValue) {
+                    fontSizeValue.textContent = currentFontSize;
+                }
+
+                const editor = document.getElementById('notepadEditor');
+                if (editor) {
+                    editor.style.fontSize = currentFontSize + 'px';
+                }
             } else {
                 const savedSize = localStorage.getItem('notepadFontSize');
                 if (savedSize) {
@@ -834,6 +1361,7 @@ function loadData() {
             return;
         } catch (e) {
             console.error('Ошибка загрузки данных:', e);
+            showTooltip('Ошибка загрузки данных', 3000);
         }
     }
 
@@ -877,26 +1405,43 @@ function loadFromFile() {
 
                 connections = data.connections || [];
 
+                // ВАЖНО: Обновляем глобальную переменную notepadContent
                 if (data.notepad) {
                     notepadContent = data.notepad;
-                } else {
-                    notepadContent = '';
+                    localStorage.setItem('roadmapNotepad', notepadContent);
+
+                    if (isNotepadOpen) {
+                        const editor = document.getElementById('notepadEditor');
+                        if (editor) {
+                            editor.innerHTML = notepadContent;
+                            updateStats();
+                        }
+                    }
                 }
 
                 if (data.notepadFontSize) {
                     currentFontSize = data.notepadFontSize;
+                    localStorage.setItem('notepadFontSize', currentFontSize.toString());
+
+                    const fontSizeValue = document.getElementById('fontSizeValue');
+                    if (fontSizeValue) {
+                        fontSizeValue.textContent = currentFontSize;
+                    }
+
+                    const editor = document.getElementById('notepadEditor');
+                    if (editor) {
+                        editor.style.fontSize = currentFontSize + 'px';
+                    }
                 }
 
                 saveData();
 
                 if (isNotepadOpen) {
-                    document.getElementById('notepadText').value = notepadContent;
-                    loadFontSize();
                     updateStats();
                 }
 
                 renderAll();
-                showTooltip('Данные загружены из файла (с заметками и настройками)', 2000);
+                showTooltip('Данные загружены из файла', 2000);
             } catch (error) {
                 showTooltip('Ошибка загрузки файла', 3000);
                 console.error(error);
@@ -908,7 +1453,6 @@ function loadFromFile() {
 }
 
 function exportData() {
-    // Обновляем содержимое блокнота перед экспортом
     if (isNotepadOpen) {
         const textarea = document.getElementById('notepadText');
         notepadContent = textarea.value;
@@ -919,7 +1463,7 @@ function exportData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.0',
+        version: '1.1',
         exportDate: new Date().toISOString()
     };
 
@@ -1045,7 +1589,6 @@ function applyTemplate() {
         saveData();
         renderAll();
 
-        // Если блокнот открыт - обновляем его содержимое
         if (isNotepadOpen) {
             document.getElementById('notepadText').value = '';
             loadFontSize();
@@ -1382,19 +1925,22 @@ function toggleNotepad() {
 
 function loadNotepadContent() {
     const saved = localStorage.getItem('roadmapData');
+    const editor = document.getElementById('notepadEditor');
+
+    if (!editor) return;
+
     if (saved) {
         try {
             const data = JSON.parse(saved);
             if (data.notepad) {
                 notepadContent = data.notepad;
-                document.getElementById('notepadText').value = notepadContent;
+                editor.innerHTML = notepadContent;
 
                 if (data.notepadFontSize) {
                     currentFontSize = data.notepadFontSize;
                 }
 
                 updateStats();
-
                 loadFontSize();
                 return;
             }
@@ -1406,49 +1952,49 @@ function loadNotepadContent() {
     const oldSaved = localStorage.getItem('roadmapNotepad');
     if (oldSaved) {
         notepadContent = oldSaved;
-        document.getElementById('notepadText').value = notepadContent;
+        editor.innerHTML = notepadContent;
     } else {
         notepadContent = '';
-        document.getElementById('notepadText').value = '';
+        editor.innerHTML = '';
     }
 
     loadFontSize();
-
     updateStats();
 }
 
 function saveNotepadContent() {
     if (isNotepadOpen) {
-        const textarea = document.getElementById('notepadText');
-        notepadContent = textarea.value;
+        const editor = document.getElementById('notepadEditor');
+        if (editor) {
+            notepadContent = editor.innerHTML;
 
-        saveData();
+            const saved = localStorage.getItem('roadmapData');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    data.notepad = notepadContent;
+                    data.notepadFontSize = currentFontSize;
+                    localStorage.setItem('roadmapData', JSON.stringify(data));
+                } catch (e) {
+                    console.error('Ошибка сохранения блокнота:', e);
+                }
+            } else {
+                const data = {
+                    nodes: [],
+                    connections: [],
+                    notepad: notepadContent,
+                    notepadFontSize: currentFontSize,
+                    version: '1.1'
+                };
+                localStorage.setItem('roadmapData', JSON.stringify(data));
+            }
 
-        localStorage.setItem('roadmapNotepad', notepadContent);
-        localStorage.setItem('notepadFontSize', currentFontSize.toString());
-    }
+            localStorage.setItem('roadmapNotepad', notepadContent);
+            localStorage.setItem('notepadFontSize', currentFontSize.toString());
 
-    showAutoSaveStatus('saved');
-}
-
-function setupNotepadAutosave() {
-    const textarea = document.getElementById('notepadText');
-
-    textarea.addEventListener('input', () => {
-        notepadContent = textarea.value;
-        updateStats();
-
-        showAutoSaveStatus('saving');
-
-        if (autoSaveTimeout) {
-            clearTimeout(autoSaveTimeout);
+            showAutoSaveStatus('saved');
         }
-
-        autoSaveTimeout = setTimeout(() => {
-            saveNotepadContent();
-            autoSaveTimeout = null;
-        }, 1000);
-    });
+    }
 }
 
 function resetNotepadSettings() {
@@ -1467,7 +2013,11 @@ function resetNotepadSettings() {
 }
 
 function updateStats() {
-    const text = document.getElementById('notepadText').value;
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    const text = editor.textContent || editor.innerText;
+
     const chars = text.length;
     const lines = text.split('\n').length;
     const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -1479,6 +2029,8 @@ function updateStats() {
 
 function showAutoSaveStatus(status) {
     const statusEl = document.getElementById('autoSaveStatus');
+    if (!statusEl) return;
+
     statusEl.className = 'notepad-auto-save ' + status;
 
     switch (status) {
@@ -1488,109 +2040,153 @@ function showAutoSaveStatus(status) {
         case 'saved':
             statusEl.querySelector('span').textContent = 'Сохранено';
             setTimeout(() => {
-                statusEl.querySelector('span').textContent = 'Автосохранение включено';
-                statusEl.className = 'notepad-auto-save';
+                if (statusEl) {
+                    statusEl.querySelector('span').textContent = 'Автосохранение включено';
+                    statusEl.className = 'notepad-auto-save';
+                }
             }, 2000);
             break;
         default:
-            statusEl.querySelector('span').textContent = 'Автосохранение включено';
+            if (statusEl.querySelector('span')) {
+                statusEl.querySelector('span').textContent = 'Автосохранение включено';
+            }
     }
 }
 
 function formatText(type) {
-    const textarea = document.getElementById('notepadText');
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
 
-    let formattedText = '';
-
-    switch (type) {
-        case 'bold':
-            formattedText = `**${selectedText}**`;
-            break;
-        case 'italic':
-            formattedText = `*${selectedText}*`;
-            break;
-        case 'underline':
-            formattedText = `__${selectedText}__`;
-            break;
-        case 'list':
-            if (selectedText) {
-                const lines = selectedText.split('\n');
-                formattedText = lines.map(line => `• ${line}`).join('\n');
-            } else {
-                formattedText = '• ';
-            }
-            break;
-        case 'code':
-            formattedText = '```\n' + selectedText + '\n```';
-            break;
-        case 'link':
-            formattedText = `[${selectedText}](https://)`;
-            break;
+    if (document.activeElement !== editor) {
+        editor.focus();
     }
 
-    textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+    try {
+        switch (type) {
+            case 'bold':
+                document.execCommand('bold', false, null);
+                break;
+            case 'italic':
+                document.execCommand('italic', false, null);
+                break;
+            case 'underline':
+                document.execCommand('underline', false, null);
+                break;
+            case 'list':
+                document.execCommand('insertUnorderedList', false, null);
+                break;
+        }
+    } catch (e) {
+        console.error('Ошибка форматирования:', e);
+    }
 
-    const newCursorPos = start + formattedText.length;
-    textarea.setSelectionRange(newCursorPos, newCursorPos);
-    textarea.focus();
-
-    textarea.dispatchEvent(new Event('input'));
+    updateNotepadContent();
+    editor.focus();
 }
 
 function clearNotepad() {
     if (confirm('Вы уверены, что хотите очистить блокнот? Это действие нельзя отменить.')) {
         notepadContent = '';
-        document.getElementById('notepadText').value = '';
+        const editor = document.getElementById('notepadEditor');
+        if (editor) editor.innerHTML = '';
         localStorage.removeItem('roadmapNotepad');
         updateStats();
+        updateNotepadContent();
         showAutoSaveStatus('saved');
     }
 }
 
 function exportNotes() {
-    const text = document.getElementById('notepadText').value;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    let htmlContent = editor.innerHTML;
+
+    htmlContent = htmlContent
+        .replace(/<div><\/div>/g, '')
+        .replace(/<div><br><\/div>/g, '<br>')
+        .replace(/<div>(.+?)<\/div>/g, '<br>$1')
+        .replace(/ {2,}/g, function (match) {
+            return '&nbsp;'.repeat(match.length);
+        });
+
+    htmlContent = htmlContent.trim();
+
+    const cleanHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Заметки из ERBY</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; padding: 20px; background: #383838; color: #ffffff; }
+        .content { max-width: 800px; margin: 0 auto; background: #474747; padding: 30px; border: 24px double #383838; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e4a700; }
+        .date { color: #e4a700; font-size: 14px; }
+        h1 { color: #f0f0f0; }
+        code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #ffd700; }
+        a { color: #64b5f6; text-decoration: underline; }
+        span[style*="color"] { color: inherit !important; }
+        b, strong { font-weight: bold; }
+        i, em { font-style: italic; }
+        u { text-decoration: underline; }
+        ul { padding-left: 20px; }
+        .exported-content { white-space: pre-wrap; font-size: ${currentFontSize}px; }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="header">
+            <h1>Заметки из ERBY</h1>
+            <div class="date">Экспорт от ${new Date().toLocaleString()}</div>
+        </div>
+        <div class="exported-content">${htmlContent}</div>
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([cleanHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ERBY_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `ERBY_notes_${new Date().toISOString().slice(0, 10)}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showTooltip('Заметки экспортированы в TXT', 2000);
+    showTooltip('Заметки экспортированы в HTML', 2000);
 }
 
 function changeFontSize(delta) {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
     const newSize = currentFontSize + delta;
 
     if (newSize >= MIN_FONT_SIZE && newSize <= MAX_FONT_SIZE) {
         currentFontSize = newSize;
 
         document.getElementById('fontSizeValue').textContent = currentFontSize;
-
-        const textarea = document.getElementById('notepadText');
-        textarea.style.fontSize = currentFontSize + 'px';
+        editor.style.fontSize = currentFontSize + 'px';
 
         saveData();
-
-        textarea.focus();
+        editor.focus();
     }
 }
 
 function loadFontSize() {
     const savedData = localStorage.getItem('roadmapData');
+    const editor = document.getElementById('notepadEditor');
+
+    if (!editor) return;
+
     if (savedData) {
         try {
             const data = JSON.parse(savedData);
             if (data.notepadFontSize) {
                 currentFontSize = data.notepadFontSize;
                 document.getElementById('fontSizeValue').textContent = currentFontSize;
-                document.getElementById('notepadText').style.fontSize = currentFontSize + 'px';
+                editor.style.fontSize = currentFontSize + 'px';
                 return;
             }
         } catch (e) {
@@ -1604,7 +2200,7 @@ function loadFontSize() {
         if (size >= MIN_FONT_SIZE && size <= MAX_FONT_SIZE) {
             currentFontSize = size;
             document.getElementById('fontSizeValue').textContent = currentFontSize;
-            document.getElementById('notepadText').style.fontSize = currentFontSize + 'px';
+            editor.style.fontSize = currentFontSize + 'px';
         }
     }
 }
