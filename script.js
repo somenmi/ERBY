@@ -1,3 +1,35 @@
+let ctrlPressed = false;
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Control' || e.ctrlKey) {
+        ctrlPressed = true;
+        document.body.classList.add('ctrl-pressed');
+    }
+});
+
+document.addEventListener('keyup', function (e) {
+    if (e.key === 'Control' || (!e.ctrlKey && ctrlPressed)) {
+        ctrlPressed = false;
+        document.body.classList.remove('ctrl-pressed');
+    }
+});
+
+window.addEventListener('blur', function () {
+    ctrlPressed = false;
+    document.body.classList.remove('ctrl-pressed');
+});
+
+let currentRoadmapId = 'default';
+let isRoadmapsModalOpen = false;
+
+function getStorageKey() {
+    return `erby_roadmap_${currentRoadmapId}`;
+}
+
+function getRoadmapListKey() {
+    return 'erby_roadmap_list';
+}
+
 let nodes = [];
 let connections = [];
 let editingNode = null;
@@ -28,6 +60,8 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
+const APP_VERSION = '1.2';
+
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');
 const helpModal = document.getElementById('helpModal');
@@ -56,6 +90,193 @@ class Connection {
         this.fromId = fromId;
         this.toId = toId;
     }
+}
+
+function initRoadmapSystem() {
+    // 1. Проверяем hash (для локального тестирования)
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+        currentRoadmapId = window.location.hash.substring(2);
+    }
+    // 2. Проверяем путь (для GitHub Pages)
+    else {
+        const path = window.location.pathname;
+        const match = path.match(/\/ERBY\/(.+)/);
+        currentRoadmapId = match ? match[1].replace(/\.html$/, '') : 'default';
+    }
+
+    // 3. Если всё равно default - оставляем как есть
+    if (!currentRoadmapId || currentRoadmapId === '') {
+        currentRoadmapId = 'default';
+    }
+
+    console.log('Roadmap ID:', currentRoadmapId);
+    document.title = `ERBY: ${currentRoadmapId}`;
+
+    loadRoadmapData();
+    updateRoadmapList();
+}
+
+function loadRoadmapData() {
+    const saved = localStorage.getItem(getStorageKey());
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+
+            nodes = (data.nodes || []).map(n => {
+                const node = Object.assign(new Node(), n);
+                if (!node.color) {
+                    node.color = '#3c4385';
+                }
+                return node;
+            });
+
+            connections = data.connections || [];
+
+            if (data.notepad) {
+                notepadContent = data.notepad;
+                if (isNotepadOpen) {
+                    const editor = document.getElementById('notepadEditor');
+                    if (editor) {
+                        editor.innerHTML = notepadContent;
+                    }
+                }
+            }
+
+            if (data.notepadFontSize) {
+                currentFontSize = data.notepadFontSize;
+                const fontSizeValue = document.getElementById('fontSizeValue');
+                if (fontSizeValue) {
+                    fontSizeValue.textContent = currentFontSize;
+                }
+                const editor = document.getElementById('notepadEditor');
+                if (editor) {
+                    editor.style.fontSize = currentFontSize + 'px';
+                }
+            }
+
+            return;
+        } catch (e) {
+            console.error('Ошибка загрузки данных:', e);
+        }
+    }
+
+    // Для обратной совместимости
+    const savedLegacy = localStorage.getItem('roadmapData');
+    if (savedLegacy && currentRoadmapId === 'default') {
+        try {
+            const data = JSON.parse(savedLegacy);
+
+            nodes = (data.nodes || []).map(n => {
+                const node = Object.assign(new Node(), n);
+                if (!node.color) {
+                    node.color = '#3c4385';
+                }
+                return node;
+            });
+
+            connections = data.connections || [];
+
+            if (data.notepad) {
+                notepadContent = data.notepad;
+            }
+
+            saveData();
+
+            localStorage.removeItem('roadmapData');
+            localStorage.removeItem('roadmapNotepad');
+            localStorage.removeItem('notepadFontSize');
+
+            addToRoadmapList('default');
+        } catch (e) {
+            console.error('Ошибка миграции:', e);
+        }
+    }
+}
+
+// Загрузка legacy данных (для обратной совместимости)
+function loadLegacyData() {
+    const saved = localStorage.getItem('roadmapData');
+    if (saved && currentRoadmapId === 'default') {
+        try {
+            const data = JSON.parse(saved);
+
+            nodes = (data.nodes || []).map(n => {
+                const node = Object.assign(new Node(), n);
+                if (!node.color) {
+                    node.color = '#3c4385';
+                }
+                return node;
+            });
+
+            connections = data.connections || [];
+
+            if (data.notepad) {
+                notepadContent = data.notepad;
+            }
+
+            // Сохраняем в новый формат
+            saveData();
+
+            // Удаляем старые данные
+            localStorage.removeItem('roadmapData');
+            localStorage.removeItem('roadmapNotepad');
+            localStorage.removeItem('notepadFontSize');
+
+            // Добавляем в список roadmap'ов
+            addToRoadmapList('default');
+
+            showTooltip('Мигрированы старые данные в новый формат', 2000);
+        } catch (e) {
+            console.error('Ошибка миграции:', e);
+        }
+    }
+}
+
+function duplicateRoadmap(sourceId, targetId) {
+    const data = localStorage.getItem(`erby_roadmap_${sourceId}`);
+    if (data) {
+        const parsed = JSON.parse(data);
+        parsed.roadmapId = targetId;
+        parsed.name = targetId;
+        parsed.lastModified = new Date().toISOString();
+        localStorage.setItem(`erby_roadmap_${targetId}`, JSON.stringify(parsed));
+        addToRoadmapList(targetId);
+        return true;
+    }
+    return false;
+}
+
+function renameRoadmap(oldId, newId) {
+    if (oldId === newId) return false;
+
+    const data = localStorage.getItem(`erby_roadmap_${oldId}`);
+    if (!data) return false;
+
+    const parsed = JSON.parse(data);
+    parsed.roadmapId = newId;
+    parsed.name = newId;
+
+    localStorage.setItem(`erby_roadmap_${newId}`, JSON.stringify(parsed));
+    localStorage.removeItem(`erby_roadmap_${oldId}`);
+
+    // Обновляем список
+    const listData = localStorage.getItem(getRoadmapListKey());
+    if (listData) {
+        const roadmaps = JSON.parse(listData);
+        const index = roadmaps.findIndex(r => r.id === oldId);
+        if (index !== -1) {
+            roadmaps[index] = {
+                id: newId,
+                name: newId,
+                lastModified: new Date().toISOString(),
+                nodeCount: parsed.nodes.length,
+                connectionCount: parsed.connections.length
+            };
+            localStorage.setItem(getRoadmapListKey(), JSON.stringify(roadmaps));
+        }
+    }
+
+    return true;
 }
 
 function updateClock() {
@@ -177,6 +398,36 @@ function removeFormatting() {
     showTooltip('Форматирование удалено', 1500);
 }
 
+function setupNotepadLinkHandler() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    editor.addEventListener('click', function (e) {
+        if (e.target.tagName === 'A' && ctrlPressed) {
+            const url = e.target.href;
+            const target = e.target.target || '_blank';
+
+            window.open(url, target);
+
+            showTooltip('Ссылка открывается в новой вкладке', 1500);
+
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+    // Также обрабатываем контекстное меню
+    editor.addEventListener('contextmenu', function (e) {
+        if (e.target.tagName === 'A') {
+            // Показываем подсказку в контекстном меню
+            if (!ctrlPressed) {
+                showTooltip('Зажмите Ctrl для клика по ссылке', 1500);
+                e.preventDefault();
+            }
+        }
+    });
+}
+
 function insertLink() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -260,9 +511,13 @@ function setupNotepadAutosave() {
                     setTimeout(() => formatText('underline'), 10);
                     break;
                 case 's':
-                    e.preventDefault();
-                    saveNotepadContent();
-                    showTooltip('Заметки сохранены', 1500);
+                case 'ы':
+                    // Ctrl+S - зачёркивание в блокноте
+                    if (document.activeElement === editor && !e.shiftKey) {
+                        e.preventDefault();
+                        setTimeout(() => formatText('strikethrough'), 10);
+                        return;
+                    }
                     break;
                 case 'k':
                     e.preventDefault();
@@ -286,6 +541,8 @@ function setupNotepadAutosave() {
     window.addEventListener('beforeunload', () => {
         saveNotepadContent();
     });
+
+    setupNotepadLinkHandler();
 }
 
 function isMobileDevice() {
@@ -618,7 +875,10 @@ function preventGlobalTextSelection() {
 }
 
 function init() {
-    loadData();
+    initRoadmapSystem();
+
+    document.getElementById('versionPlaceholder').textContent = `v${APP_VERSION}`;
+
     renderAll();
     setupEventListeners();
     setupNotepadAutosave();
@@ -639,16 +899,9 @@ function init() {
 
     if (!localStorage.getItem('roadmapFirstRun')) {
         setTimeout(() => {
-            if (confirm('Привет! Это ваш первый запуск ERBY: Easy Roadmap Builder of Yalkee. Хотите посмотреть справку? (Справка - иконка в верхнем левом углу)')) {
+            if (confirm('Привет! Это ваш первый запуск ERBY. Теперь вы можете создавать несколько roadmap\'ов. Хотите посмотреть справку?')) {
                 showHelp();
             }
-            setTimeout(() => {
-                if (nodes.length === 0) {
-                    if (confirm('Хотите начать с готового шаблона? (икнока ниже после "Справки")')) {
-                        showTemplates();
-                    }
-                }
-            }, 500);
         }, 1000);
         localStorage.setItem('roadmapFirstRun', 'true');
     }
@@ -664,11 +917,6 @@ function init() {
                 document.execCommand('insertText', false, text);
                 updateNotepadContent();
             });
-
-            const colorPicker = document.getElementById('customColorPicker');
-            if (colorPicker) {
-                colorPicker.value = '#000000';
-            }
         }
     }, 100);
 }
@@ -1264,23 +1512,28 @@ function handleKeyPress(e) {
         if (e.ctrlKey) {
             switch (e.key.toLowerCase()) {
                 case 'b':
+                case 'и':
                     e.preventDefault();
                     formatText('bold');
                     break;
                 case 'i':
+                case 'ш':
                     e.preventDefault();
                     formatText('italic');
                     break;
                 case 'u':
+                case 'г':
                     e.preventDefault();
                     formatText('underline');
                     break;
                 case 's':
+                case 'ы':
                     e.preventDefault();
                     saveNotepadContent();
                     showTooltip('Заметки сохранены', 1500);
                     break;
                 case 'k':
+                case 'л':
                     e.preventDefault();
                     insertLink();
                     break;
@@ -1342,6 +1595,11 @@ function handleKeyPress(e) {
         e.preventDefault();
         exportData();
     }
+
+    if (e.key === 'm' || e.key === 'M' || e.key === 'ь' || e.key === 'Ь') {
+        e.preventDefault();
+        toggleRoadmapsModal();
+    }
 }
 
 function deleteNode(node) {
@@ -1368,14 +1626,431 @@ function saveData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.1'
+        version: '1.2',
+        lastModified: new Date().toISOString(),
+        name: currentRoadmapId
     };
 
     try {
-        localStorage.setItem('roadmapData', JSON.stringify(data));
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+        addToRoadmapList(currentRoadmapId);
+        updateRoadmapList();
     } catch (e) {
         console.error('Ошибка сохранения:', e);
     }
+}
+
+// Добавление roadmap'а в список
+function addToRoadmapList(roadmapId) {
+    try {
+        const listData = localStorage.getItem(getRoadmapListKey());
+        let roadmaps = [];
+
+        if (listData) {
+            roadmaps = JSON.parse(listData);
+        }
+
+        const existingIndex = roadmaps.findIndex(r => r.id === roadmapId);
+        const roadmapInfo = {
+            id: roadmapId,
+            name: roadmapId,
+            lastModified: new Date().toISOString(),
+            nodeCount: nodes.length,
+            connectionCount: connections.length
+        };
+
+        if (existingIndex !== -1) {
+            roadmaps[existingIndex] = roadmapInfo;
+        } else {
+            roadmaps.push(roadmapInfo);
+        }
+
+        roadmaps.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+        localStorage.setItem(getRoadmapListKey(), JSON.stringify(roadmaps));
+    } catch (e) {
+        console.error('Ошибка сохранения списка:', e);
+    }
+}
+
+// Обновление списка roadmap'ов в интерфейсе
+function updateRoadmapList() {
+    const roadmapListElement = document.getElementById('roadmapList');
+    const roadmapCountElement = document.getElementById('roadmapCount');
+    const currentRoadmapDisplay = document.getElementById('currentRoadmapDisplay');
+
+    if (!roadmapListElement) return;
+
+    try {
+        const listData = localStorage.getItem(getRoadmapListKey());
+        let roadmaps = [];
+
+        if (listData) {
+            roadmaps = JSON.parse(listData);
+        }
+
+        // Обновляем отображение текущего roadmap
+        if (currentRoadmapDisplay) {
+            currentRoadmapDisplay.textContent = currentRoadmapId;
+        }
+
+        // Обновляем счетчик
+        if (roadmapCountElement) {
+            const total = roadmaps.length;
+            const active = roadmaps.find(r => r.id === currentRoadmapId) ? 1 : 0;
+            roadmapCountElement.textContent = `${total} roadmap'ов • ${active} активен`;
+        }
+
+        let html = '';
+
+        if (roadmaps.length === 0) {
+            html = `
+                <div style="text-align: center; padding: 40px 20px; color: #888;">
+                    <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 15px; opacity: 0.5;"></i>
+                    <div style="font-size: 16px; margin-bottom: 5px;">Нет сохраненных roadmap</div>
+                    <div style="font-size: 13px;">Создайте первый через поле выше</div>
+                </div>
+            `;
+        } else {
+            // ПОКАЗЫВАЕМ ВСЕ roadmap'ы (максимум 50 для безопасности)
+            const maxToShow = 50;
+            const roadmapsToShow = roadmaps.slice(0, maxToShow);
+
+            // Разделяем на активный и остальные
+            const currentRoadmap = roadmaps.find(r => r.id === currentRoadmapId);
+            const otherRoadmaps = roadmaps.filter(r => r.id !== currentRoadmapId);
+
+            // Сначала показываем текущий активный (если есть в списке)
+            if (currentRoadmap) {
+                html += createRoadmapItem(currentRoadmap, true);
+            }
+
+            // Затем остальные
+            otherRoadmaps.forEach(roadmap => {
+                html += createRoadmapItem(roadmap, false);
+            });
+
+            // Если roadmap'ов больше, чем показываем
+            if (roadmaps.length > maxToShow) {
+                html += `
+                    <div style="text-align: center; padding: 15px; color: #888; font-size: 13px; border-top: 1px solid #444; margin-top: 10px;">
+                        <i class="fas fa-ellipsis-h"></i>
+                        Показаны ${maxToShow} из ${roadmaps.length} roadmap'ов
+                    </div>
+                `;
+            }
+        }
+
+        roadmapListElement.innerHTML = html;
+
+        // Обновляем высоту контейнера в зависимости от количества элементов
+        const itemCount = roadmaps.length;
+        const maxHeight = Math.min(400, 100 + (itemCount * 70)); // Максимум 400px
+        roadmapListElement.style.maxHeight = maxHeight + 'px';
+
+    } catch (e) {
+        console.error('Ошибка обновления списка:', e);
+        roadmapListElement.innerHTML = `
+            <div style="color: #f44336; padding: 30px; text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                <div>Ошибка загрузки списка</div>
+                <div style="font-size: 12px; margin-top: 5px;">Попробуйте обновить страницу</div>
+            </div>
+        `;
+    }
+}
+
+// Функция для пересчёта статистики всех roadmap'ов
+function recalculateAllRoadmapStats() {
+    try {
+        const listData = localStorage.getItem(getRoadmapListKey());
+        if (!listData) return;
+
+        const roadmaps = JSON.parse(listData);
+        let updatedCount = 0;
+
+        roadmaps.forEach(roadmap => {
+            const roadmapData = localStorage.getItem(`erby_roadmap_${roadmap.id}`);
+            if (roadmapData) {
+                try {
+                    const data = JSON.parse(roadmapData);
+                    const nodeCount = data.nodes ? data.nodes.length : 0;
+                    const connectionCount = data.connections ? data.connections.length : 0;
+
+                    // Если статистика не совпадает, обновляем
+                    if (roadmap.nodeCount !== nodeCount || roadmap.connectionCount !== connectionCount) {
+                        roadmap.nodeCount = nodeCount;
+                        roadmap.connectionCount = connectionCount;
+                        updatedCount++;
+                    }
+                } catch (e) {
+                    console.error(`Ошибка обработки roadmap ${roadmap.id}:`, e);
+                }
+            }
+        });
+
+        // Сохраняем обновлённый список
+        localStorage.setItem(getRoadmapListKey(), JSON.stringify(roadmaps));
+
+        if (updatedCount > 0) {
+            console.log(`Обновлена статистика для ${updatedCount} roadmap'ов`);
+        }
+
+        return updatedCount;
+    } catch (e) {
+        console.error('Ошибка пересчёта статистики:', e);
+        return 0;
+    }
+}
+
+// Вспомогательная функция для создания элемента roadmap
+function createRoadmapItem(roadmap, isCurrent) {
+    const date = new Date(roadmap.lastModified);
+    const timeAgo = getTimeAgo(date);
+    const dateFormatted = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const nodeText = getPluralForm(roadmap.nodeCount, 'окошко', 'окошка', 'окошек');
+    const connText = getPluralForm(roadmap.connectionCount, 'связь', 'связи', 'связей');
+
+    // Определяем иконку по имени
+    let icon = 'fas fa-map';
+    if (roadmap.name.toLowerCase().includes('project') || roadmap.name.toLowerCase().includes('проект')) {
+        icon = 'fas fa-project-diagram';
+    } else if (roadmap.name.toLowerCase().includes('work') || roadmap.name.toLowerCase().includes('работа')) {
+        icon = 'fas fa-briefcase';
+    } else if (roadmap.name.toLowerCase().includes('study') || roadmap.name.toLowerCase().includes('учеба')) {
+        icon = 'fas fa-graduation-cap';
+    } else if (roadmap.name.toLowerCase().includes('personal') || roadmap.name.toLowerCase().includes('личный')) {
+        icon = 'fas fa-user';
+    }
+
+    return `
+        <div style="margin-bottom: 8px; padding: 12px; border-radius: 6px; background: ${isCurrent ? 'rgba(57, 73, 171, 0.3)' : 'rgba(255, 255, 255, 0.05)'}; border-left: 4px solid ${isCurrent ? '#ffd000' : '#51b448'}; transition: all 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <i class="${icon}" style="color: ${isCurrent ? '#ffd000' : '#7986cb'}; margin-right: 10px; font-size: 14px;"></i>
+                        <a href="javascript:void(0)" 
+                           onclick="switchRoadmap('${roadmap.id}')"
+                           style="color: ${isCurrent ? '#ffd000' : '#ddd'}; text-decoration: none; font-weight: ${isCurrent ? 'bold' : 'normal'}; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                           title="${roadmap.name}">
+                            ${roadmap.name}
+                        </a>
+                        ${isCurrent ? `
+                            <span style="color: #ffd000; margin-left: 10px; font-size: 11px; background: rgba(255, 208, 0, 0.2); padding: 2px 8px; border-radius: 10px; white-space: nowrap;">
+                                <i class="fas fa-check"></i> активен
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #888;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span title="${dateFormatted}">
+                                <i class="far fa-clock" style="margin-right: 3px;"></i>
+                                ${timeAgo}
+                            </span>
+                            <span title="Статистика">
+                                <i class="fas fa-cube" style="margin-right: 3px;"></i>
+                                ${roadmap.nodeCount} ${nodeText}
+                            </span>
+                            <span title="Связи">
+                                <i class="fas fa-project-diagram" style="margin-right: 3px;"></i>
+                                ${roadmap.connectionCount} ${connText}
+                            </span>
+                        </div>
+                        
+                        ${!isCurrent ? `
+                            <button onclick="deleteRoadmap('${roadmap.id}')" 
+                                    style="background: transparent; color: #ff6b6b; border: 1px solid rgba(211, 47, 47, 0.3); padding: 10px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 10px; transition: all 0.2s;"
+                                    title="Удалить '${roadmap.id}'?"
+                                    onmouseover="this.style.background='rgba(211, 47, 47, 0.2)'; this.style.borderColor='#ff6b6b'"
+                                    onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(211, 47, 47, 0.3)'">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : `
+                            <span style="color: #888; font-size: 11px;">
+                                <i class="fas fa-lock"></i> нельзя удалить
+                            </span>
+                        `}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Функция для форматирования времени ("2 часа назад", "вчера" и т.д.)
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.round(diffMs / 60000);
+    const diffHours = Math.round(diffMs / 3600000);
+    const diffDays = Math.round(diffMs / 86400000);
+
+    if (diffMins < 1) return 'только что';
+    if (diffMins < 60) return `${diffMins} мин. назад`;
+    if (diffHours < 24) return `${diffHours} ч. назад`;
+    if (diffDays === 1) return 'вчера';
+    if (diffDays === 2) return 'позавчера';
+    if (diffDays < 7) return `${diffDays} дн. назад`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} нед. назад`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} мес. назад`;
+    return `${Math.floor(diffDays / 365)} г. назад`;
+}
+
+// Функция для правильного склонения слов
+function getPluralForm(number, one, few, many) {
+    const n = Math.abs(number) % 100;
+    const n1 = n % 10;
+
+    if (n > 10 && n < 20) return many;
+    if (n1 === 1) return one;
+    if (n1 >= 2 && n1 <= 4) return few;
+    return many;
+}
+
+function toggleRoadmapsModal() {
+    isRoadmapsModalOpen = !isRoadmapsModalOpen;
+    const modal = document.getElementById('roadmapsModal');
+
+    if (modal) {
+        modal.style.display = isRoadmapsModalOpen ? 'flex' : 'none';
+        isModalOpen = isRoadmapsModalOpen;
+
+        if (isRoadmapsModalOpen) {
+            const input = document.getElementById('roadmapIdInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+
+            recalculateAllRoadmapStats();
+
+            updateRoadmapList();
+        }
+    }
+}
+
+// Переключение на другой roadmap
+function switchRoadmap(roadmapId) {
+    if (roadmapId === currentRoadmapId) return;
+
+    if (confirm(`Перейти к roadmap "${roadmapId}"? Текущий прогресс будет сохранен автоматически.`)) {
+        saveData();
+
+        if (roadmapId === 'default') {
+            window.location.href = 'https://somenmi.github.io/ERBY/';
+        } else {
+            window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+        }
+    }
+}
+
+// Создание нового roadmap'а
+function createNewRoadmap() {
+    const roadmapId = prompt('Введите ID для нового roadmap (только буквы, цифры и дефисы):', `roadmap_${Date.now().toString().slice(-6)}`);
+
+    if (!roadmapId) return;
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(roadmapId)) {
+        alert('ID может содержать только буквы, цифры, дефисы и подчеркивания');
+        return;
+    }
+
+    saveData();
+
+    const newRoadmapData = {
+        nodes: [],
+        connections: [],
+        notepad: '',
+        notepadFontSize: 14,
+        version: '1.2',
+        lastModified: new Date().toISOString(),
+        name: roadmapId
+    };
+
+    localStorage.setItem(`erby_roadmap_${roadmapId}`, JSON.stringify(newRoadmapData));
+    addToRoadmapList(roadmapId);
+    window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+}
+
+function goToRoadmap() {
+    const input = document.getElementById('roadmapIdInput');
+    if (!input) return;
+
+    const roadmapId = input.value.trim();
+
+    if (!roadmapId) {
+        alert('Введите ID roadmap');
+        return;
+    }
+
+    if (roadmapId === 'default' || roadmapId === '') {
+        window.location.href = 'https://somenmi.github.io/ERBY/';
+        return;
+    }
+
+    // Проверка на допустимые символы
+    if (!/^[a-zA-Z0-9_-]+$/.test(roadmapId)) {
+        alert('ID может содержать только буквы, цифры, дефисы и подчеркивания');
+        return;
+    }
+
+    const exists = localStorage.getItem(`erby_roadmap_${roadmapId}`) !== null;
+
+    if (!exists) {
+        if (!confirm(`Roadmap "${roadmapId}" не существует. Создать новый?`)) {
+            return;
+        }
+
+        // СОЗДАЁМ НОВЫЙ ROADMAP, ЕСЛИ ЕГО НЕТ
+        const newRoadmapData = {
+            nodes: [],
+            connections: [],
+            notepad: '',
+            notepadFontSize: 14,
+            version: '1.2',
+            lastModified: new Date().toISOString(),
+            name: roadmapId
+        };
+
+        localStorage.setItem(`erby_roadmap_${roadmapId}`, JSON.stringify(newRoadmapData));
+        addToRoadmapList(roadmapId);
+    }
+
+    saveData(); // Сохраняем текущий
+    window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+}
+
+function exportData() {
+    if (isNotepadOpen) {
+        const editor = document.getElementById('notepadEditor');
+        if (editor) {
+            notepadContent = editor.innerHTML;
+        }
+    }
+
+    const data = {
+        nodes,
+        connections,
+        notepad: notepadContent,
+        notepadFontSize: currentFontSize,
+        version: '1.2',
+        exportDate: new Date().toISOString(),
+        roadmapId: currentRoadmapId,
+        roadmapName: currentRoadmapId
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ERBY_${currentRoadmapId}_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showTooltip(`Roadmap "${currentRoadmapId}" экспортирован`, 2000);
 }
 
 function loadData() {
@@ -1470,54 +2145,56 @@ function loadFromFile() {
         reader.onload = event => {
             try {
                 const data = JSON.parse(event.target.result);
+                const fileRoadmapId = data.roadmapId || `imported_${Date.now().toString().slice(-6)}`;
 
-                nodes = (data.nodes || []).map(n => {
-                    const node = Object.assign(new Node(), n);
-                    if (!node.color) {
-                        node.color = '#3c4385';
-                    }
-                    return node;
-                });
+                if (confirm(`Загрузить как новый roadmap "${fileRoadmapId}"?`)) {
+                    localStorage.setItem(`erby_roadmap_${fileRoadmapId}`, JSON.stringify(data));
+                    addToRoadmapList(fileRoadmapId);
+                    window.location.href = `https://somenmi.github.io/ERBY/${fileRoadmapId}`;
+                } else {
+                    nodes = (data.nodes || []).map(n => {
+                        const node = Object.assign(new Node(), n);
+                        if (!node.color) {
+                            node.color = '#3c4385';
+                        }
+                        return node;
+                    });
 
-                connections = data.connections || [];
+                    connections = data.connections || [];
 
-                // ВАЖНО: Обновляем глобальную переменную notepadContent
-                if (data.notepad) {
-                    notepadContent = data.notepad;
-                    localStorage.setItem('roadmapNotepad', notepadContent);
-
-                    if (isNotepadOpen) {
-                        const editor = document.getElementById('notepadEditor');
-                        if (editor) {
-                            editor.innerHTML = notepadContent;
-                            updateStats();
+                    if (data.notepad) {
+                        notepadContent = data.notepad;
+                        if (isNotepadOpen) {
+                            const editor = document.getElementById('notepadEditor');
+                            if (editor) {
+                                editor.innerHTML = notepadContent;
+                                updateStats();
+                            }
                         }
                     }
-                }
 
-                if (data.notepadFontSize) {
-                    currentFontSize = data.notepadFontSize;
-                    localStorage.setItem('notepadFontSize', currentFontSize.toString());
+                    if (data.notepadFontSize) {
+                        currentFontSize = data.notepadFontSize;
+                        const fontSizeValue = document.getElementById('fontSizeValue');
+                        if (fontSizeValue) {
+                            fontSizeValue.textContent = currentFontSize;
+                        }
 
-                    const fontSizeValue = document.getElementById('fontSizeValue');
-                    if (fontSizeValue) {
-                        fontSizeValue.textContent = currentFontSize;
+                        const editor = document.getElementById('notepadEditor');
+                        if (editor) {
+                            editor.style.fontSize = currentFontSize + 'px';
+                        }
                     }
 
-                    const editor = document.getElementById('notepadEditor');
-                    if (editor) {
-                        editor.style.fontSize = currentFontSize + 'px';
+                    saveData();
+
+                    if (isNotepadOpen) {
+                        updateStats();
                     }
+
+                    renderAll();
+                    showTooltip('Данные загружены из файла', 2000);
                 }
-
-                saveData();
-
-                if (isNotepadOpen) {
-                    updateStats();
-                }
-
-                renderAll();
-                showTooltip('Данные загружены из файла', 2000);
             } catch (error) {
                 showTooltip('Ошибка загрузки файла', 3000);
                 console.error(error);
@@ -1526,6 +2203,39 @@ function loadFromFile() {
         reader.readAsText(file);
     };
     input.click();
+}
+
+function deleteRoadmap(roadmapId) {
+    // Нельзя удалить текущий активный roadmap
+    if (roadmapId === currentRoadmapId) {
+        alert('Нельзя удалить активный roadmap. Переключитесь на другой roadmap сначала.');
+        return;
+    }
+
+    if (!confirm(`Вы уверены, что хотите удалить roadmap "${roadmapId}"? Это действие нельзя отменить.`)) {
+        return;
+    }
+
+    try {
+        // Удаляем данные roadmap
+        localStorage.removeItem(`erby_roadmap_${roadmapId}`);
+
+        // Удаляем из списка
+        const listData = localStorage.getItem(getRoadmapListKey());
+        if (listData) {
+            const roadmaps = JSON.parse(listData);
+            const updatedRoadmaps = roadmaps.filter(r => r.id !== roadmapId);
+            localStorage.setItem(getRoadmapListKey(), JSON.stringify(updatedRoadmaps));
+        }
+
+        // Обновляем отображение
+        updateRoadmapList();
+
+        showTooltip(`Roadmap "${roadmapId}" удалён`, 2000);
+    } catch (e) {
+        console.error('Ошибка удаления roadmap:', e);
+        alert('Ошибка при удалении roadmap');
+    }
 }
 
 function exportData() {
@@ -1539,7 +2249,7 @@ function exportData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.1',
+        version: '1.2',
         exportDate: new Date().toISOString()
     };
 
@@ -1562,6 +2272,7 @@ function showTooltip(text, duration = 2000) {
     tooltip.style.left = '50%';
     tooltip.style.top = '20px';
     tooltip.style.transform = 'translateX(-50%)';
+    tooltip.style.zIndex = '9999';
 
     setTimeout(() => {
         tooltip.style.display = 'none';
@@ -2060,7 +2771,7 @@ function saveNotepadContent() {
                     connections: [],
                     notepad: notepadContent,
                     notepadFontSize: currentFontSize,
-                    version: '1.1'
+                    version: '1.2'
                 };
                 localStorage.setItem('roadmapData', JSON.stringify(data));
             }
@@ -2148,16 +2859,55 @@ function formatText(type) {
             case 'underline':
                 document.execCommand('underline', false, null);
                 break;
+            case 'strikethrough':
+                document.execCommand('strikeThrough', false, null);
+                break;
             case 'list':
                 document.execCommand('insertUnorderedList', false, null);
                 break;
         }
     } catch (e) {
         console.error('Ошибка форматирования:', e);
+
+        if (type === 'strikethrough') {
+            applyStrikethroughFallback();
+        }
     }
 
     updateNotepadContent();
     editor.focus();
+}
+
+// Резервная функция для зачёркнутого текста (если execCommand не работает)
+function applyStrikethroughFallback() {
+    const editor = document.getElementById('notepadEditor');
+    if (!editor) return;
+
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (selection.isCollapsed) {
+        showTooltip('Выделите текст для зачёркивания', 1500);
+        return;
+    }
+
+    const selectedText = selection.toString();
+    const span = document.createElement('span');
+    span.style.textDecoration = 'line-through';
+    span.textContent = selectedText;
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(span);
+
+    // Восстанавливаем курсор после вставки
+    selection.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.setStartAfter(span);
+    newRange.collapse(true);
+    selection.addRange(newRange);
+
+    showTooltip('Текст зачёркнут', 1500);
 }
 
 function clearNotepad() {

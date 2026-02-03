@@ -570,6 +570,7 @@
         .help-section h4 {
             color: #ffbb00;
             margin-bottom: 16px;
+            margin-top: 38px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -711,6 +712,11 @@
             color: #90caf9;
         }
 
+        body.ctrl-pressed .notepad-editor a {
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
         .notepad-editor ul {
             padding-left: 20px;
             margin: 10px 0;
@@ -722,6 +728,13 @@
 
         .notepad-editor span[style*="color"] {
             color: inherit;
+        }
+
+        .notepad-editor s,
+        .notepad-editor strike,
+        .notepad-editor span[style*="line-through"] {
+            text-decoration: line-through;
+            color: #aaa;
         }
 
         #notepadText {
@@ -1045,7 +1058,7 @@
             border-radius: 4px;
             font-size: 12px;
             white-space: nowrap;
-            z-index: 1000;
+            z-index: 10000;
             display: none;
             backdrop-filter: blur(4px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1223,6 +1236,25 @@
                 margin-bottom: 10px;
             }
         }
+
+        .roadmap-nav {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 10px;
+        }
+
+        #roadmapList::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #roadmapList {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(255, 196, 0)rgba(0, 0, 0, 0);
+        }
+
+        #roadmapList a:hover {
+            color: #ffd000;
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -1250,6 +1282,10 @@
                 <div>2nd Click: <span style="color: #ffee00;">Edit</span></div>
                 <div>RMB: <span style="color: #d84d4d;">Block</span> / <span style="color: #58d84d;">Unlock</span></div>
             </div>
+            <hr class="hr">
+            <button title="Roadmaps" onclick="toggleRoadmapsModal()">
+                <i class="fas fa-sitemap"></i>
+            </button>
             <hr class="hr">
             <div class="clock-container" style="margin-top: 6px; padding: 4px;">
                 <div style="
@@ -1354,6 +1390,7 @@
                         <li><span class="key">S</span> - Сохранить в браузере</li>
                         <li><span class="key">Ctrl</span> + <span class="key">S</span> - Экспорт в JSON</li>
                         <li><span class="key">N</span> - Открыть/закрыть блокнот</li>
+                        <li><span class="key">M</span> - Управление roadmap'ами</li>
                     </ul>
                 </div>
 
@@ -1399,6 +1436,12 @@
 
                         <div><i class="fas fa-plus"></i></div>
                         <div>Добавить новый контейнер</div>
+
+                        <div><i class="fas fa-clock"></i></div>
+                        <div>Часы</div>
+
+                        <div><i class="fas fa-sitemap"></i></div>
+                        <div>Управление Roadmap's</div>
                     </div>
                 </div>
 
@@ -1417,6 +1460,39 @@
                         </li>
                         <li><strong>Экспорт</strong> - можно экспортировать заметки отдельным файлом</li>
                         <li><strong>Статистика</strong> - отслеживайте количество символов, строк и слов</li>
+                        <li><strong>Горячие клавиши в блокноте</strong>: Ctrl+B (жирный), Ctrl+I (курсив), Ctrl+U
+                            (подчёркивание), Ctrl+S (зачёркивание)</li>
+                        <li><strong>Ссылки</strong> - для добавления используйте кнопку ссылки или Ctrl+K</li>
+                        <li><strong>Клик по ссылкам</strong> - зажмите Ctrl и кликните по ссылке для открытия (ссылки не
+                            кликабельны без Ctrl для предотвращения случайных кликов)
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4><i class="fas fa-sitemap"></i> Система множественных Roadmap'ов (сокращенно - RM)</h4>
+                    <ul>
+                        <li><strong>Несколько RM'ов</strong> - создавайте отдельные RM'ы с уникальными URL
+                        </li>
+                        <li><strong>URL формат</strong>: <code>https://somenmi.github.io/ERBY/</code> - дефолтный</li>
+                        <li><strong>URL формат</strong>: <code>https://somenmi.github.io/ERBY/my-project123</code> -
+                            RM "my-project123"</li>
+                        <li><strong>Переключение</strong> - используйте окно управления (кнопка <i
+                                class="fas fa-sitemap"></i> или клавиша M)</li>
+                        <li><strong>Автосохранение</strong> - каждый RM сохраняется отдельно <strong
+                                style="color: #ff4646;">только в вашем браузере</strong></li>
+                        <li><strong>Экспорт/импорт</strong> - каждый RM можно экспортировать отдельно</li>
+                        <li><strong>Удаление</strong> - можно удалять неактивные RM'ы из списка</li>
+                    </ul>
+
+                    <h4><i class="fas fa-exclamation-triangle"></i> Важно</h4>
+                    <ul>
+                        <li>Нельзя удалить активный roadmap - сначала переключитесь на другой</li>
+                        <li style="white-space: pre-line;">Все данные хранятся локально в браузере
+                            <strong style="color: red;">`Перейти на свой уникальный Roadmap с другого устройства, по
+                                вашему локальному URL — НЕВОЗМОЖНО`</strong></strong>
+                        </li>
+                        <li>Для переноса данных используйте экспорт/импорт</li>
                     </ul>
                 </div>
             </div>
@@ -1424,7 +1500,7 @@
             <div class="help-footer">
                 <p><img src="images/logo.png" alt="ERBY" class="logo-icon"
                         style="max-height: 12px; margin-right: -8px;"><strong class="bold">ERBY</strong> • Easy Roadmap
-                    Builder of Yalkee</p>
+                    Builder of Yalkee <span id="versionPlaceholder" style="color: #ffd000; font-weight: 600;"></span></p>
             </div>
         </div>
     </div>
@@ -1550,6 +1626,9 @@
                         <button class="format-btn" onclick="formatText('underline')" title="Подчеркивание (Ctrl+U)">
                             <i class="fas fa-underline"></i>
                         </button>
+                        <button class="format-btn" onclick="formatText('strikethrough')" title="Зачёркнутый (Ctrl+S)">
+                            <i class="fas fa-strikethrough"></i>
+                        </button>
                         <button class="format-btn" onclick="removeFormatting()" title="Удалить форматирование">
                             <i class="fas fa-eraser"></i>
                         </button>
@@ -1589,6 +1668,65 @@
                         <i class="fas fa-check"></i> Готово
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="roadmapsModal" class="modal">
+        <div class="modal-content" style="width: 450px; max-width: 95vw;">
+            <div class="editor-header">
+                <h3><i class="fas fa-sitemap"></i> Управление Roadmap's</h3>
+                <button class="close-btn" onclick="toggleRoadmapsModal()">&times;</button>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <div style="margin-bottom: 20px;">
+                    <div style="color: #aaa; margin-bottom: 8px; font-size: 14px;">
+                        <i class="fas fa-arrow-right"></i> Быстрый переход:
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="roadmapIdInput" placeholder="Введите ID roadmap"
+                            style="flex: 1; background: #444; border: 1px solid #555; color: white; padding: 10px; border-radius: 4px;">
+                        <button onclick="goToRoadmap()"
+                            style="background: #ffbb00; color: #000000; border: none; border-radius: 4px; cursor: pointer; height: 36px; width: 86px; margin: 6px 0;">
+                            Перейти
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="createNewRoadmap()"
+                    style="width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
+                    <i class="fas fa-plus"></i> Создать новый roadmap
+                </button>
+
+                <div
+                    style="margin-bottom: 10px; color: #aaa; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fas fa-history"></i> Недавние:</span>
+                    <span id="roadmapCount" style="color: #888; font-size: 12px;"></span>
+                </div>
+
+                <div id="roadmapList"
+                    style="height: 300px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
+                    <!-- Список roadmap'ов -->
+                </div>
+
+                <div style="border-top: 1px solid #444; padding-top: 15px; margin-bottom: 15px;">
+                    <div style="color: #aaa; margin-bottom: 10px; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> Текущий: <strong id="currentRoadmapDisplay"
+                            style="color: #ffd000;">${currentRoadmapId}</strong>
+                    </div>
+
+                    <div style="display: grid; gap: 10px;">
+                        <button onclick="exportData()"
+                            style="background: #555; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-file-export"></i> Экспорт
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="toggleRoadmapsModal()" style="flex: 1;">Закрыть</button>
             </div>
         </div>
     </div>
