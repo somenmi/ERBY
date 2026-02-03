@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>ERBY - Redirecting</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 10px;
+            border: 1px solid #444;
+            max-width: 500px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #ffd000;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img src="images/logo.png" alt="ERBY" class="logo">
+        <h2>Перенаправление в ERBY...</h2>
+        <div class="spinner"></div>
+        <p>Если перенаправление не произошло, <a href="index.html" style="color: #ffd000;">нажмите сюда</a></p>
+
+        <script>
+            // GitHub Pages отправляет все 404 запросы сюда
+            const path = window.location.pathname;
+            console.log('404 page: Original path:', path);
+
+            // Если путь содержит /ERBY/something - это наш roadmap
+            const match = path.match(/\/ERBY\/(.+)/);
+
+            if (match && match[1]) {
+                const roadmapId = match[1];
+                console.log('Detected roadmap ID:', roadmapId);
+
+                // Перенаправляем на index.html с hash
+                const newUrl = window.location.origin + '/ERBY/index.html#/' + roadmapId;
+                console.log('Redirecting to:', newUrl);
+                window.location.href = newUrl;
+            } else {
+                // Просто на главную
+                window.location.href = window.location.origin + '/ERBY/index.html';
+            }
+        </script>
+    </div>
+</body>
+
+</html>

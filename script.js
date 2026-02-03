@@ -60,7 +60,7 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
-const APP_VERSION = '1.2';
+const APP_VERSION = '1.2.1';
 
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');
@@ -93,25 +93,16 @@ class Connection {
 }
 
 function initRoadmapSystem() {
-    // 1. Проверяем hash (для локального тестирования)
+    // ВСЕГДА ИСПОЛЬЗУЕМ HASH
     if (window.location.hash && window.location.hash.startsWith('#/')) {
         currentRoadmapId = window.location.hash.substring(2);
-    }
-    // 2. Проверяем путь (для GitHub Pages)
-    else {
-        const path = window.location.pathname;
-        const match = path.match(/\/ERBY\/(.+)/);
-        currentRoadmapId = match ? match[1].replace(/\.html$/, '') : 'default';
-    }
-
-    // 3. Если всё равно default - оставляем как есть
-    if (!currentRoadmapId || currentRoadmapId === '') {
+        console.log('Loaded from hash:', currentRoadmapId);
+    } else {
         currentRoadmapId = 'default';
+        console.log('Default roadmap');
     }
-
-    console.log('Roadmap ID:', currentRoadmapId);
+    
     document.title = `ERBY: ${currentRoadmapId}`;
-
     loadRoadmapData();
     updateRoadmapList();
 }
@@ -879,6 +870,11 @@ function init() {
 
     document.getElementById('versionPlaceholder').textContent = `v${APP_VERSION}`;
 
+    window.addEventListener('hashchange', function () {
+        initRoadmapSystem();
+        renderAll();
+    });
+
     renderAll();
     setupEventListeners();
     setupNotepadAutosave();
@@ -1626,7 +1622,7 @@ function saveData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.2',
+        version: APP_VERSION,
         lastModified: new Date().toISOString(),
         name: currentRoadmapId
     };
@@ -1933,14 +1929,13 @@ function toggleRoadmapsModal() {
 // Переключение на другой roadmap
 function switchRoadmap(roadmapId) {
     if (roadmapId === currentRoadmapId) return;
-
-    if (confirm(`Перейти к roadmap "${roadmapId}"? Текущий прогресс будет сохранен автоматически.`)) {
+    
+    if (confirm(`Перейти к roadmap "${roadmapId}"?`)) {
         saveData();
-
         if (roadmapId === 'default') {
-            window.location.href = 'https://somenmi.github.io/ERBY/';
+            window.location.hash = '';
         } else {
-            window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+            window.location.hash = '/' + roadmapId;
         }
     }
 }
@@ -1963,20 +1958,19 @@ function createNewRoadmap() {
         connections: [],
         notepad: '',
         notepadFontSize: 14,
-        version: '1.2',
+        version: APP_VERSION,
         lastModified: new Date().toISOString(),
         name: roadmapId
     };
 
     localStorage.setItem(`erby_roadmap_${roadmapId}`, JSON.stringify(newRoadmapData));
     addToRoadmapList(roadmapId);
-    window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+
+    window.location.hash = '/' + roadmapId;
 }
 
 function goToRoadmap() {
     const input = document.getElementById('roadmapIdInput');
-    if (!input) return;
-
     const roadmapId = input.value.trim();
 
     if (!roadmapId) {
@@ -1984,12 +1978,6 @@ function goToRoadmap() {
         return;
     }
 
-    if (roadmapId === 'default' || roadmapId === '') {
-        window.location.href = 'https://somenmi.github.io/ERBY/';
-        return;
-    }
-
-    // Проверка на допустимые символы
     if (!/^[a-zA-Z0-9_-]+$/.test(roadmapId)) {
         alert('ID может содержать только буквы, цифры, дефисы и подчеркивания');
         return;
@@ -1997,28 +1985,26 @@ function goToRoadmap() {
 
     const exists = localStorage.getItem(`erby_roadmap_${roadmapId}`) !== null;
 
-    if (!exists) {
-        if (!confirm(`Roadmap "${roadmapId}" не существует. Создать новый?`)) {
-            return;
-        }
+    if (!exists && !confirm(`Roadmap "${roadmapId}" не существует. Создать новый?`)) {
+        return;
+    }
 
-        // СОЗДАЁМ НОВЫЙ ROADMAP, ЕСЛИ ЕГО НЕТ
+    if (!exists) {
         const newRoadmapData = {
             nodes: [],
             connections: [],
             notepad: '',
             notepadFontSize: 14,
-            version: '1.2',
+            version: APP_VERSION,
             lastModified: new Date().toISOString(),
             name: roadmapId
         };
-
         localStorage.setItem(`erby_roadmap_${roadmapId}`, JSON.stringify(newRoadmapData));
         addToRoadmapList(roadmapId);
     }
 
-    saveData(); // Сохраняем текущий
-    window.location.href = `https://somenmi.github.io/ERBY/${roadmapId}`;
+    saveData();
+    window.location.hash = '/' + roadmapId;
 }
 
 function exportData() {
@@ -2034,7 +2020,7 @@ function exportData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.2',
+        version: APP_VERSION,
         exportDate: new Date().toISOString(),
         roadmapId: currentRoadmapId,
         roadmapName: currentRoadmapId
@@ -2249,7 +2235,7 @@ function exportData() {
         connections,
         notepad: notepadContent,
         notepadFontSize: currentFontSize,
-        version: '1.2',
+        version: APP_VERSION,
         exportDate: new Date().toISOString()
     };
 
@@ -2771,7 +2757,7 @@ function saveNotepadContent() {
                     connections: [],
                     notepad: notepadContent,
                     notepadFontSize: currentFontSize,
-                    version: '1.2'
+                    version: APP_VERSION
                 };
                 localStorage.setItem('roadmapData', JSON.stringify(data));
             }
