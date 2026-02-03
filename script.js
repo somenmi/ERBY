@@ -60,7 +60,7 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');
@@ -926,9 +926,7 @@ function setupEventListeners() {
     window.addEventListener('resize', renderAll);
 
     document.addEventListener('click', (e) => {
-        if (e.target === nodeModal) closeModal();
         if (e.target === helpModal) closeHelp();
-        if (e.target === templatesModal) closeTemplatesModal();
     });
 
     nativeColorPicker.addEventListener('input', (e) => {

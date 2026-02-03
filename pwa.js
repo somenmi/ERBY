@@ -1,12 +1,12 @@
-const CACHE_NAME = 'erby';
+const CACHE_NAME = 'ERBY';
 const urlsToCache = [
-    '/erby/',                   // Корневая страница
-    '/erby/index.html',         // Главная страница
-    '/erby/script.js',          // Основной скрипт
-    '/erby/images/logo.png',    // Логотип
-    '/erby/images/bg.png',      // Фон
-    '/erby/manifest.json',      // Манифест
-    '/erby/pwa.js'              // service worker PWA
+    '/ERBY/',                   // Корневая страница
+    '/ERBY/index.html',         // Главная страница
+    '/ERBY/script.js',          // Основной скрипт
+    '/ERBY/images/logo.png',    // Логотип
+    '/ERBY/images/bg.png',      // Фон
+    '/ERBY/manifest.json',      // Манифест
+    '/ERBY/pwa.js'              // service worker PWA
 ];
 
 self.addEventListener('install', event => {
