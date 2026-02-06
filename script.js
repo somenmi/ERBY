@@ -60,7 +60,7 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');
@@ -96,12 +96,10 @@ function initRoadmapSystem() {
     // ВСЕГДА ИСПОЛЬЗУЕМ HASH
     if (window.location.hash && window.location.hash.startsWith('#/')) {
         currentRoadmapId = window.location.hash.substring(2);
-        console.log('Loaded from hash:', currentRoadmapId);
     } else {
         currentRoadmapId = 'default';
-        console.log('Default roadmap');
     }
-    
+
     document.title = `ERBY: ${currentRoadmapId}`;
     loadRoadmapData();
     updateRoadmapList();
@@ -125,11 +123,9 @@ function loadRoadmapData() {
 
             if (data.notepad) {
                 notepadContent = data.notepad;
-                if (isNotepadOpen) {
-                    const editor = document.getElementById('notepadEditor');
-                    if (editor) {
-                        editor.innerHTML = notepadContent;
-                    }
+                const editor = document.getElementById('notepadEditor');
+                if (editor) {
+                    editor.innerHTML = notepadContent;
                 }
             }
 
@@ -169,14 +165,16 @@ function loadRoadmapData() {
 
             if (data.notepad) {
                 notepadContent = data.notepad;
+                const editor = document.getElementById('notepadEditor');
+                if (editor) {
+                    editor.innerHTML = notepadContent;
+                }
             }
 
             saveData();
-
             localStorage.removeItem('roadmapData');
             localStorage.removeItem('roadmapNotepad');
             localStorage.removeItem('notepadFontSize');
-
             addToRoadmapList('default');
         } catch (e) {
             console.error('Ошибка миграции:', e);
@@ -287,6 +285,41 @@ function registerServiceWorker() {
                 console.log('❌ Ошибка регистрации Service Worker:', err);
             });
     }
+}
+
+function migrateOldData() {
+    const oldNotepad = localStorage.getItem('roadmapNotepad');
+    const oldFontSize = localStorage.getItem('notepadFontSize');
+
+    if (oldNotepad && currentRoadmapId === 'default') {
+        const saved = localStorage.getItem(getStorageKey());
+        let data;
+
+        if (saved) {
+            try {
+                data = JSON.parse(saved);
+            } catch (e) {
+                data = createNewRoadmapData();
+            }
+        } else {
+            data = createNewRoadmapData();
+        }
+
+        data.notepad = oldNotepad;
+        if (oldFontSize) {
+            data.notepadFontSize = parseInt(oldFontSize) || 14;
+        }
+
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+
+        localStorage.removeItem('roadmapNotepad');
+        localStorage.removeItem('notepadFontSize');
+        localStorage.removeItem('roadmapData');
+
+        console.log('Мигрированы старые данные блокнота');
+        return true;
+    }
+    return false;
 }
 
 function updateNotepadContent() {
@@ -1927,7 +1960,7 @@ function toggleRoadmapsModal() {
 // Переключение на другой roadmap
 function switchRoadmap(roadmapId) {
     if (roadmapId === currentRoadmapId) return;
-    
+
     if (confirm(`Перейти к roadmap "${roadmapId}"?`)) {
         saveData();
         if (roadmapId === 'default') {
@@ -2134,7 +2167,12 @@ function loadFromFile() {
                 if (confirm(`Загрузить как новый roadmap "${fileRoadmapId}"?`)) {
                     localStorage.setItem(`erby_roadmap_${fileRoadmapId}`, JSON.stringify(data));
                     addToRoadmapList(fileRoadmapId);
-                    window.location.href = `https://somenmi.github.io/ERBY/${fileRoadmapId}`;
+
+                    if (fileRoadmapId === 'default') {
+                        window.location.hash = '';
+                    } else {
+                        window.location.hash = '/' + fileRoadmapId;
+                    }
                 } else {
                     nodes = (data.nodes || []).map(n => {
                         const node = Object.assign(new Node(), n);
@@ -2148,10 +2186,28 @@ function loadFromFile() {
 
                     if (data.notepad) {
                         notepadContent = data.notepad;
+
+                        const currentData = {
+                            nodes: nodes,
+                            connections: connections,
+                            notepad: data.notepad,
+                            notepadFontSize: data.notepadFontSize || 14,
+                            version: APP_VERSION,
+                            lastModified: new Date().toISOString(),
+                            name: currentRoadmapId
+                        };
+
+                        localStorage.setItem(getStorageKey(), JSON.stringify(currentData));
+
+                        localStorage.setItem('roadmapNotepad', data.notepad);
+                        if (data.notepadFontSize) {
+                            localStorage.setItem('notepadFontSize', data.notepadFontSize.toString());
+                        }
+
                         if (isNotepadOpen) {
                             const editor = document.getElementById('notepadEditor');
                             if (editor) {
-                                editor.innerHTML = notepadContent;
+                                editor.innerHTML = data.notepad;
                                 updateStats();
                             }
                         }
@@ -2170,14 +2226,9 @@ function loadFromFile() {
                         }
                     }
 
-                    saveData();
-
-                    if (isNotepadOpen) {
-                        updateStats();
-                    }
-
+                    addToRoadmapList(currentRoadmapId);
                     renderAll();
-                    showTooltip('Данные загружены из файла', 2000);
+                    showTooltip('Данные загружены из файла в текущий roadmap', 2000);
                 }
             } catch (error) {
                 showTooltip('Ошибка загрузки файла', 3000);
@@ -2686,8 +2737,8 @@ function toggleNotepad() {
     isModalOpen = isNotepadOpen;
 
     if (isNotepadOpen) {
-        loadNotepadContent();
-        document.getElementById('notepadText').focus();
+        refreshNotepadContent();
+        document.getElementById('notepadEditor').focus();
         updateStats();
     } else {
         saveNotepadContent();
@@ -2695,10 +2746,10 @@ function toggleNotepad() {
 }
 
 function loadNotepadContent() {
-    const saved = localStorage.getItem('roadmapData');
     const editor = document.getElementById('notepadEditor');
-
     if (!editor) return;
+
+    const saved = localStorage.getItem(getStorageKey());
 
     if (saved) {
         try {
@@ -2710,23 +2761,18 @@ function loadNotepadContent() {
                 if (data.notepadFontSize) {
                     currentFontSize = data.notepadFontSize;
                 }
-
-                updateStats();
-                loadFontSize();
-                return;
             }
         } catch (e) {
-            console.error('Ошибка загрузки блокнота:', e);
+            console.error('Ошибка загрузки блокнота из roadmap:', e);
         }
     }
 
-    const oldSaved = localStorage.getItem('roadmapNotepad');
-    if (oldSaved) {
-        notepadContent = oldSaved;
-        editor.innerHTML = notepadContent;
-    } else {
-        notepadContent = '';
-        editor.innerHTML = '';
+    if (!notepadContent || notepadContent === '') {
+        const oldNotepad = localStorage.getItem('roadmapNotepad');
+        if (oldNotepad) {
+            notepadContent = oldNotepad;
+            editor.innerHTML = notepadContent;
+        }
     }
 
     loadFontSize();
@@ -2739,33 +2785,52 @@ function saveNotepadContent() {
         if (editor) {
             notepadContent = editor.innerHTML;
 
-            const saved = localStorage.getItem('roadmapData');
+            const saved = localStorage.getItem(getStorageKey());
+            let roadmapData;
+
             if (saved) {
                 try {
-                    const data = JSON.parse(saved);
-                    data.notepad = notepadContent;
-                    data.notepadFontSize = currentFontSize;
-                    localStorage.setItem('roadmapData', JSON.stringify(data));
+                    roadmapData = JSON.parse(saved);
+                    roadmapData.notepad = notepadContent;
+                    roadmapData.notepadFontSize = currentFontSize;
                 } catch (e) {
-                    console.error('Ошибка сохранения блокнота:', e);
+                    roadmapData = {
+                        nodes: nodes,
+                        connections: connections,
+                        notepad: notepadContent,
+                        notepadFontSize: currentFontSize,
+                        version: APP_VERSION
+                    };
                 }
             } else {
-                const data = {
-                    nodes: [],
-                    connections: [],
+                roadmapData = {
+                    nodes: nodes,
+                    connections: connections,
                     notepad: notepadContent,
                     notepadFontSize: currentFontSize,
                     version: APP_VERSION
                 };
-                localStorage.setItem('roadmapData', JSON.stringify(data));
             }
 
+            localStorage.setItem(getStorageKey(), JSON.stringify(roadmapData));
             localStorage.setItem('roadmapNotepad', notepadContent);
             localStorage.setItem('notepadFontSize', currentFontSize.toString());
 
             showAutoSaveStatus('saved');
         }
     }
+}
+
+function createNewRoadmapData() {
+    return {
+        nodes: nodes,
+        connections: connections,
+        notepad: notepadContent,
+        notepadFontSize: currentFontSize,
+        version: APP_VERSION,
+        lastModified: new Date().toISOString(),
+        name: currentRoadmapId
+    };
 }
 
 function resetNotepadSettings() {
@@ -2793,9 +2858,13 @@ function updateStats() {
     const lines = text.split('\n').length;
     const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
 
-    document.querySelector('.char-count').textContent = chars;
-    document.querySelector('.line-count').textContent = lines;
-    document.querySelector('.word-count').textContent = words;
+    const charCount = document.querySelector('.char-count');
+    const lineCount = document.querySelector('.line-count');
+    const wordCount = document.querySelector('.word-count');
+
+    if (charCount) charCount.textContent = chars;
+    if (lineCount) lineCount.textContent = lines;
+    if (wordCount) wordCount.textContent = words;
 }
 
 function showAutoSaveStatus(status) {
@@ -2926,12 +2995,13 @@ function exportNotes() {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Заметки из ERBY</title>
+    <title>Заметки из ERBY - ${currentRoadmapId}</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; padding: 20px; background: #383838; color: #ffffff; }
         .content { max-width: 800px; margin: 0 auto; background: #474747; padding: 30px; border: 24px double #383838; }
         .header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e4a700; }
         .date { color: #e4a700; font-size: 14px; }
+        .roadmap-id { color: #4caf50; font-weight: bold; }
         h1 { color: #f0f0f0; }
         code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #ffd700; }
         a { color: #64b5f6; text-decoration: underline; }
@@ -2948,6 +3018,7 @@ function exportNotes() {
         <div class="header">
             <h1>Заметки из ERBY</h1>
             <div class="date">Экспорт от ${new Date().toLocaleString()}</div>
+            <div class="roadmap-id">Roadmap: ${currentRoadmapId}</div>
         </div>
         <div class="exported-content">${htmlContent}</div>
     </div>
@@ -2958,7 +3029,7 @@ function exportNotes() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ERBY_notes_${new Date().toISOString().slice(0, 10)}.html`;
+    a.download = `ERBY_notes_${currentRoadmapId}_${new Date().toISOString().slice(0, 10)}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2985,14 +3056,14 @@ function changeFontSize(delta) {
 }
 
 function loadFontSize() {
-    const savedData = localStorage.getItem('roadmapData');
+    const saved = localStorage.getItem(getStorageKey());
     const editor = document.getElementById('notepadEditor');
 
     if (!editor) return;
 
-    if (savedData) {
+    if (saved) {
         try {
-            const data = JSON.parse(savedData);
+            const data = JSON.parse(saved);
             if (data.notepadFontSize) {
                 currentFontSize = data.notepadFontSize;
                 document.getElementById('fontSizeValue').textContent = currentFontSize;
@@ -3000,7 +3071,7 @@ function loadFontSize() {
                 return;
             }
         } catch (e) {
-            console.error('Ошибка загрузки размера шрифта:', e);
+            console.error('Ошибка загрузки размера шрифта из roadmap:', e);
         }
     }
 
@@ -3011,7 +3082,21 @@ function loadFontSize() {
             currentFontSize = size;
             document.getElementById('fontSizeValue').textContent = currentFontSize;
             editor.style.fontSize = currentFontSize + 'px';
+            return;
         }
+    }
+
+    currentFontSize = 14;
+    document.getElementById('fontSizeValue').textContent = currentFontSize;
+    editor.style.fontSize = currentFontSize + 'px';
+}
+
+function refreshNotepadContent() {
+    const editor = document.getElementById('notepadEditor');
+    if (editor) {
+        editor.innerHTML = notepadContent;
+        editor.style.fontSize = currentFontSize + 'px';
+        updateStats();
     }
 }
 
