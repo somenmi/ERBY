@@ -60,7 +60,7 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
-const APP_VERSION = '1.2.3';
+const APP_VERSION = '1.2.4';
 
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');
@@ -1324,7 +1324,7 @@ function renderAll() {
                     <div class="node-title" title="${escapeHtml(node.title)}">${escapeHtml(node.title)}</div>
                 </div>
             </div>
-            <div class="node-description" title="${escapeHtml(node.description)}">${escapeHtml(node.description)}</div>
+            <div class="node-description" title="${escapeHtml(node.description)}">${escapeHtml(node.description).replace(/\n/g, '<br>')}</div>
             <div class="progress-scale">
                 ${progressSquares}
             </div>
