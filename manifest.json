@@ -1,6 +1,7 @@
 {
     "name": "ERBY",
     "short_name": "ERBY",
+    "version": "1.3.0",
     "description": "Easy Roadmap Builder of Yalkee",
     "start_url": "./",
     "display": "standalone",
