@@ -60,7 +60,7 @@ let isTouchDevice = false;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
 
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.2.6';
 
 const canvas = document.getElementById('roadmapCanvas');
 const nodeModal = document.getElementById('nodeModal');

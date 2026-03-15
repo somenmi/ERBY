@@ -122,6 +122,15 @@
             transform-origin: top left;
         }
 
+        .hub-button {
+            height: 53px;
+        }
+
+        .hub-button img {
+            filter: saturate(0) brightness(2);
+        }
+
+
         /*################## LOGO & ANIMATIONS ##################*/
         .logo-btn {
             background: none;
@@ -1285,6 +1294,12 @@
                 <div>RMB: <span style="color: #d84d4d;">Block</span> / <span style="color: #58d84d;">Unlock</span></div>
             </div>
             <hr class="hr">
+            <button title="Перейти в Yalkee Hub" onclick="window.open('https://somenmi.github.io/hub_nity/', '_parent')"
+                class="hub-button">
+                <img src="https://raw.githubusercontent.com/somenmi/images/main/hub_nity/logo.png" alt="Hub"
+                    style="width: 28px; height: 28px; vertical-align: middle;">
+            </button>
+            <hr class="hr">
             <button title="Roadmaps" onclick="toggleRoadmapsModal()">
                 <i class="fas fa-sitemap"></i>
             </button>
@@ -1411,7 +1426,8 @@
                 <div class="help-section">
                     <h4><i class="fas fa-sliders-h"></i> Панель управления</h4>
                     <div class="controls-list ct">
-                        <div><img src="https://github.com/somenmi/images/raw/main/ERBY/logo.png" alt="ERBY" class="logo-icon" style="width: 20px; height: 20px;">
+                        <div><img src="https://github.com/somenmi/images/raw/main/ERBY/logo.png" alt="ERBY"
+                                class="logo-icon" style="width: 20px; height: 20px;">
                         </div>
                         <div>Открыть справку (F1)</div>
 
