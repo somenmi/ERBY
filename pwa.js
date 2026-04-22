@@ -1,10 +1,10 @@
-const CACHE_NAME = 'ERBY_v1_3_0';
+const CACHE_NAME = 'ERBY_v1_3_1';
 const urlsToCache = [
     '/ERBY/',                   // Корневая страница
     '/ERBY/index.html',         // Главная страница
     '/ERBY/script.js',          // Основной скрипт
-    '/ERBY/images/logo.png',    // Логотип
-    '/ERBY/images/bg.png',      // Фон
+    'https://raw.githubusercontent.com/somenmi/images/refs/heads/main/ERBY/favicon.ico',    // Логотип
+    'https://raw.githubusercontent.com/somenmi/images/main/ERBY/bg.png',      // Фон
     '/ERBY/manifest.json',      // Манифест
     '/ERBY/pwa.js'              // service worker PWA
 ];

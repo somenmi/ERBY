@@ -1,6 +1,3 @@
-// ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ ====================
-
-// Состояние приложения
 let ctrlPressed = false;
 let currentRoadmapId = 'default';
 let isRoadmapsModalOpen = false;
@@ -29,14 +26,10 @@ let canvasStartY = 0;
 let canvasScrollLeft = 0;
 let canvasScrollTop = 0;
 let isTouchDevice = false;
-
-// Константы
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 32;
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const STORAGE_VERSION_KEY = 'erby_app_version';
-
-// DOM элементы (получаем после загрузки страницы, поэтому пока null)
 let canvas = null;
 let nodeModal = null;
 let helpModal = null;
@@ -45,14 +38,6 @@ let tooltip = null;
 let lockBtn = null;
 let connectBtn = null;
 let nativeColorPicker = null;
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (УТИЛИТЫ) ====================
-
-/**
- * Показывает всплывающую подсказку
- * @param {string} text - Текст подсказки
- * @param {number} duration - Длительность показа в мс
- */
 function showTooltip(text, duration = 2000) {
     if (!tooltip) return;
     tooltip.textContent = text;
@@ -66,23 +51,11 @@ function showTooltip(text, duration = 2000) {
         tooltip.style.display = 'none';
     }, duration);
 }
-
-/**
- * Экранирует HTML специальные символы
- * @param {string} text - Текст для экранирования
- * @returns {string} - Экранированный текст
- */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
-
-/**
- * Преобразует RGB в HEX
- * @param {string} rgb - RGB строка
- * @returns {string} - HEX цвет
- */
 function rgbToHex(rgb) {
     if (rgb.startsWith('#')) return rgb.toLowerCase();
     if (rgb.startsWith('rgb')) {
@@ -96,13 +69,6 @@ function rgbToHex(rgb) {
     }
     return '#3c4385';
 }
-
-/**
- * Затемняет HEX цвет
- * @param {string} hexColor - HEX цвет
- * @param {number} factor - Коэффициент затемнения
- * @returns {string} - Затемненный HEX цвет
- */
 function darkenColor(hexColor, factor = 0.75) {
     let color = hexColor.replace('#', '');
     if (color.length === 3) {
@@ -116,12 +82,6 @@ function darkenColor(hexColor, factor = 0.75) {
     const darkenedB = Math.floor(b * factor);
     return `#${darkenedR.toString(16).padStart(2, '0')}${darkenedG.toString(16).padStart(2, '0')}${darkenedB.toString(16).padStart(2, '0')}`;
 }
-
-/**
- * Возвращает имя цвета по HEX
- * @param {string} hex - HEX цвет
- * @returns {string} - Имя цвета
- */
 function getColorName(hex) {
     const colors = {
         '#ff6b6b': 'Красный',
@@ -135,15 +95,6 @@ function getColorName(hex) {
     };
     return colors[hex.toLowerCase()] || 'выбранный цвет';
 }
-
-/**
- * Возвращает правильную форму множественного числа
- * @param {number} number - Число
- * @param {string} one - Форма для 1
- * @param {string} few - Форма для 2-4
- * @param {string} many - Форма для остальных
- * @returns {string} - Правильная форма
- */
 function getPluralForm(number, one, few, many) {
     const n = Math.abs(number) % 100;
     const n1 = n % 10;
@@ -152,12 +103,6 @@ function getPluralForm(number, one, few, many) {
     if (n1 >= 2 && n1 <= 4) return few;
     return many;
 }
-
-/**
- * Форматирует время ("2 часа назад")
- * @param {Date} date - Дата
- * @returns {string} - Отформатированное время
- */
 function getTimeAgo(date) {
     const now = new Date();
     const diffMs = now - date;
@@ -175,11 +120,6 @@ function getTimeAgo(date) {
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} мес. назад`;
     return `${Math.floor(diffDays / 365)} г. назад`;
 }
-
-/**
- * Проверяет, является ли устройство мобильным
- * @returns {boolean} - true если мобильное устройство
- */
 function isMobileDevice() {
     const isTouch = 'ontouchstart' in window ||
         navigator.maxTouchPoints > 0 ||
@@ -189,8 +129,6 @@ function isMobileDevice() {
     const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
     return (isTouch && isSmallScreen) || isMobileUserAgent;
 }
-
-// ==================== КЛАССЫ ====================
 
 class Node {
     constructor(id, title, description, x, y, color = '#3c4385') {
@@ -213,8 +151,6 @@ class Connection {
     }
 }
 
-// ==================== ФУНКЦИИ РАБОТЫ С ХРАНИЛИЩЕМ ====================
-
 function getStorageKey() {
     return `erby_roadmap_${currentRoadmapId}`;
 }
@@ -222,10 +158,6 @@ function getStorageKey() {
 function getRoadmapListKey() {
     return 'erby_roadmap_list';
 }
-
-/**
- * Проверяет версию приложения и чистит кэш при обновлении
- */
 function checkAppVersion() {
     const lastVersion = localStorage.getItem(STORAGE_VERSION_KEY);
     if (lastVersion !== APP_VERSION) {
@@ -243,17 +175,16 @@ function checkAppVersion() {
         }
 
         localStorage.setItem(STORAGE_VERSION_KEY, APP_VERSION);
+        
+        saveData();
+        
         showTooltip('Обнаружено обновление! Перезагрузка...', 2000);
 
         setTimeout(() => {
-            window.location.reload(true);
+            window.location.reload();
         }, 2000);
     }
 }
-
-/**
- * Сохраняет данные в localStorage
- */
 function saveData() {
     if (isNotepadOpen) {
         const editor = document.getElementById('notepadEditor');
@@ -280,10 +211,6 @@ function saveData() {
         console.error('Ошибка сохранения:', e);
     }
 }
-
-/**
- * Загружает данные из localStorage
- */
 function loadRoadmapData() {
     const saved = localStorage.getItem(getStorageKey());
     if (saved) {
@@ -314,8 +241,6 @@ function loadRoadmapData() {
             console.error('Ошибка загрузки данных:', e);
         }
     }
-
-    // Для обратной совместимости
     const savedLegacy = localStorage.getItem('roadmapData');
     if (savedLegacy && currentRoadmapId === 'default') {
         try {
@@ -341,10 +266,6 @@ function loadRoadmapData() {
         }
     }
 }
-
-/**
- * Инициализирует систему roadmap'ов
- */
 function initRoadmapSystem() {
     if (window.location.hash && window.location.hash.startsWith('#/')) {
         currentRoadmapId = window.location.hash.substring(2);
@@ -355,13 +276,6 @@ function initRoadmapSystem() {
     loadRoadmapData();
     updateRoadmapList();
 }
-
-// ==================== ФУНКЦИИ УПРАВЛЕНИЯ ROADMAP ====================
-
-/**
- * Добавляет roadmap в список
- * @param {string} roadmapId - ID roadmap
- */
 function addToRoadmapList(roadmapId) {
     try {
         const listData = localStorage.getItem(getRoadmapListKey());
@@ -388,10 +302,6 @@ function addToRoadmapList(roadmapId) {
         console.error('Ошибка сохранения списка:', e);
     }
 }
-
-/**
- * Обновляет отображение списка roadmap'ов
- */
 function updateRoadmapList() {
     const roadmapListElement = document.getElementById('roadmapList');
     const roadmapCountElement = document.getElementById('roadmapCount');
@@ -463,13 +373,6 @@ function updateRoadmapList() {
         `;
     }
 }
-
-/**
- * Создает HTML элемент для roadmap
- * @param {Object} roadmap - Данные roadmap
- * @param {boolean} isCurrent - Текущий ли roadmap
- * @returns {string} - HTML строка
- */
 function createRoadmapItem(roadmap, isCurrent) {
     const date = new Date(roadmap.lastModified);
     const timeAgo = getTimeAgo(date);
@@ -542,11 +445,6 @@ function createRoadmapItem(roadmap, isCurrent) {
         </div>
     `;
 }
-
-/**
- * Переключается на другой roadmap
- * @param {string} roadmapId - ID roadmap
- */
 function switchRoadmap(roadmapId) {
     if (roadmapId === currentRoadmapId) return;
     if (confirm(`Перейти к roadmap "${roadmapId}"?`)) {
@@ -554,10 +452,6 @@ function switchRoadmap(roadmapId) {
         window.location.hash = roadmapId === 'default' ? '' : '/' + roadmapId;
     }
 }
-
-/**
- * Создает новый roadmap
- */
 function createNewRoadmap() {
     const roadmapId = prompt('Введите ID для нового roadmap (только буквы, цифры и дефисы):', `roadmap_${Date.now().toString().slice(-6)}`);
     if (!roadmapId) return;
@@ -582,10 +476,6 @@ function createNewRoadmap() {
     addToRoadmapList(roadmapId);
     window.location.hash = '/' + roadmapId;
 }
-
-/**
- * Переходит к roadmap по ID
- */
 function goToRoadmap() {
     const input = document.getElementById('roadmapIdInput');
     const roadmapId = input.value.trim();
@@ -623,11 +513,6 @@ function goToRoadmap() {
     saveData();
     window.location.hash = '/' + roadmapId;
 }
-
-/**
- * Удаляет roadmap
- * @param {string} roadmapId - ID roadmap
- */
 function deleteRoadmap(roadmapId) {
     if (roadmapId === currentRoadmapId) {
         alert('Нельзя удалить активный roadmap. Переключитесь на другой roadmap сначала.');
@@ -653,10 +538,6 @@ function deleteRoadmap(roadmapId) {
         alert('Ошибка при удалении roadmap');
     }
 }
-
-/**
- * Пересчитывает статистику всех roadmap'ов
- */
 function recalculateAllRoadmapStats() {
     try {
         const listData = localStorage.getItem(getRoadmapListKey());
@@ -694,12 +575,6 @@ function recalculateAllRoadmapStats() {
         return 0;
     }
 }
-
-// ==================== ФУНКЦИИ УПРАВЛЕНИЯ NODE ====================
-
-/**
- * Добавляет новый узел
- */
 function addNode(title = 'Новый этап', description = 'Описание', x = 100, y = 440, color = '#35506eff') {
     const id = 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
     const node = new Node(id, title, description, x, y, color);
@@ -708,11 +583,6 @@ function addNode(title = 'Новый этап', description = 'Описание'
     renderAll();
     return node;
 }
-
-/**
- * Редактирует узел
- * @param {Node} node - Узел для редактирования
- */
 function editNode(node) {
     editingNode = node;
     isModalOpen = true;
@@ -728,11 +598,6 @@ function editNode(node) {
     nodeModal.style.display = 'flex';
     document.getElementById('nodeTitle').focus();
 }
-
-/**
- * Обновляет выделение цвета
- * @param {string} color - HEX цвет
- */
 function updateColorSelection(color) {
     document.querySelectorAll('.color-option').forEach(option => {
         option.classList.remove('selected');
@@ -742,11 +607,6 @@ function updateColorSelection(color) {
         }
     });
 }
-
-/**
- * Применяет цвет к предпросмотру
- * @param {string} color - HEX цвет
- */
 function applyColorToPreview(color) {
     if (!editingNode) return;
     editingNode.color = color;
@@ -756,11 +616,6 @@ function applyColorToPreview(color) {
         nodeElement.style.borderColor = darkenColor(color, 0.75);
     }
 }
-
-/**
- * Выбирает цвет из палитры
- * @param {string} color - HEX цвет
- */
 function selectColor(color) {
     document.getElementById('nodeColor').value = color;
     if (nativeColorPicker) nativeColorPicker.value = color;
@@ -769,10 +624,6 @@ function selectColor(color) {
         applyColorToPreview(color);
     }
 }
-
-/**
- * Сохраняет изменения узла
- */
 function saveNode() {
     if (!editingNode) return;
 
@@ -789,10 +640,6 @@ function saveNode() {
     renderAll();
     showTooltip('Изменения сохранены', 1500);
 }
-
-/**
- * Удаляет редактируемый узел
- */
 function deleteEditingNode() {
     if (!editingNode) return;
     if (confirm(`Удалить контейнер "${editingNode.title}"?`)) {
@@ -805,11 +652,6 @@ function deleteEditingNode() {
         showTooltip('Контейнер удален', 1500);
     }
 }
-
-/**
- * Удаляет узел по ссылке
- * @param {Node} node - Узел для удаления
- */
 function deleteNode(node) {
     if (!confirm(`Удалить контейнер "${node.title}"?`)) return;
     nodes = nodes.filter(n => n.id !== node.id);
@@ -818,21 +660,11 @@ function deleteNode(node) {
     renderAll();
     showTooltip('Контейнер удален', 1500);
 }
-
-/**
- * Закрывает модальное окно редактирования
- */
 function closeModal() {
     nodeModal.style.display = 'none';
     editingNode = null;
     isModalOpen = false;
 }
-
-// ==================== ФУНКЦИИ УПРАВЛЕНИЯ СВЯЗЯМИ ====================
-
-/**
- * Переключает режим создания связей
- */
 function toggleConnectionMode() {
     isConnecting = !isConnecting;
     startNode = null;
@@ -845,12 +677,6 @@ function toggleConnectionMode() {
         showTooltip('Режим связей выключен', 1500);
     }
 }
-
-/**
- * Создает связь между узлами
- * @param {Node} fromNode - Откуда
- * @param {Node} toNode - Куда
- */
 function createConnection(fromNode, toNode) {
     if (fromNode.id === toNode.id) {
         showTooltip('Нельзя соединить контейнер с самим собой', 2000);
@@ -872,11 +698,6 @@ function createConnection(fromNode, toNode) {
     renderAll();
     showTooltip(`Связь создана: ${fromNode.title} → ${toNode.title}`, 2000);
 }
-
-/**
- * Удаляет связь
- * @param {Connection} conn - Связь для удаления
- */
 function deleteConnection(conn) {
     const fromNode = nodes.find(n => n.id === conn.fromId);
     const toNode = nodes.find(n => n.id === conn.toId);
@@ -888,12 +709,6 @@ function deleteConnection(conn) {
         showTooltip(`Связь удалена: ${fromNode.title} → ${toNode.title}`, 2000);
     }
 }
-
-/**
- * Подсвечивает связи узла
- * @param {string} nodeId - ID узла
- * @param {boolean} highlight - Подсвечивать или нет
- */
 function highlightNodeConnections(nodeId, highlight) {
     const relatedConnections = connections.filter(conn =>
         conn.fromId === nodeId || conn.toId === nodeId
@@ -910,12 +725,6 @@ function highlightNodeConnections(nodeId, highlight) {
         }
     });
 }
-
-// ==================== ФУНКЦИИ УПРАВЛЕНИЯ БЛОКИРОВКОЙ ====================
-
-/**
- * Переключает блокировку всех узлов
- */
 function toggleLockAll() {
     if (isModalOpen) return;
 
@@ -936,12 +745,6 @@ function toggleLockAll() {
     saveData();
     renderAll();
 }
-
-/**
- * Переключает блокировку конкретного узла
- * @param {Node} node - Узел
- * @param {Event} event - Событие
- */
 function toggleLockNode(node, event) {
     if (event) event.preventDefault();
 
@@ -962,10 +765,6 @@ function toggleLockNode(node, event) {
     saveData();
     renderAll();
 }
-
-/**
- * Проверяет, все ли узлы заблокированы
- */
 function checkAllNodesLocked() {
     const allNodesLocked = nodes.length > 0 && nodes.every(node => node.locked);
     if (allNodesLocked && !isAllLocked) {
@@ -974,15 +773,6 @@ function checkAllNodesLocked() {
         }
     }
 }
-
-// ==================== ФУНКЦИИ ПРОГРЕССА ====================
-
-/**
- * Переключает прогресс узла
- * @param {Node} node - Узел
- * @param {number} index - Индекс прогресса
- * @param {Event} event - Событие
- */
 function toggleProgressSquare(node, index, event) {
     event.stopPropagation();
     if (node.locked) return;
@@ -1009,16 +799,8 @@ function toggleProgressSquare(node, index, event) {
             index < 9 ? 'Продвинутый' : 'Эксперт';
     showTooltip(`Прогресс: ${level} (${index + 1}/12)`, 1500);
 }
-
-// ==================== ФУНКЦИИ ОТРИСОВКИ ====================
-
-/**
- * Отрисовывает все узлы и связи
- */
 function renderAll() {
     canvas.innerHTML = '';
-
-    // Рисуем связи
     connections.forEach(conn => {
         const fromNode = nodes.find(n => n.id === conn.fromId);
         const toNode = nodes.find(n => n.id === conn.toId);
@@ -1026,8 +808,6 @@ function renderAll() {
             drawConnection(fromNode, toNode, conn);
         }
     });
-
-    // Рисуем узлы
     nodes.forEach(node => {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'node';
@@ -1074,8 +854,6 @@ function renderAll() {
                 ${progressSquares}
             </div>
         `;
-
-        // Добавляем обработчики событий
         const progressSquaresEls = nodeEl.querySelectorAll('.progress-square');
         progressSquaresEls.forEach((square, index) => {
             square.addEventListener('click', (e) => toggleProgressSquare(node, index, e));
@@ -1122,13 +900,6 @@ function renderAll() {
         highlightNodeConnections(selectedNode.id, true);
     }
 }
-
-/**
- * Рисует линию связи
- * @param {Node} fromNode - Откуда
- * @param {Node} toNode - Куда
- * @param {Connection} conn - Связь
- */
 function drawConnection(fromNode, toNode, conn) {
     const line = document.createElement('div');
     line.className = 'connection';
@@ -1157,13 +928,6 @@ function drawConnection(fromNode, toNode, conn) {
 
     canvas.appendChild(line);
 }
-
-// ==================== ФУНКЦИИ DRAG & DROP ====================
-
-/**
- * Начало перетаскивания
- * @param {Event} e - Событие мыши
- */
 function startDrag(e) {
     if (window.getSelection) window.getSelection().removeAllRanges();
     if (isConnecting || isModalOpen || isAllLocked) return;
@@ -1189,11 +953,6 @@ function startDrag(e) {
     nodeEl.style.boxShadow = '0 0 0 2px #ffd000, 0 4px 16px rgba(0, 0, 0, 0.4)';
     highlightNodeConnections(node.id, true);
 }
-
-/**
- * Процесс перетаскивания
- * @param {Event} e - Событие мыши
- */
 function drag(e) {
     if (!selectedNode || !mouseIsDown) return;
     if (isAllLocked) {
@@ -1221,10 +980,6 @@ function drag(e) {
 
     highlightNodeConnections(selectedNode.id, true);
 }
-
-/**
- * Завершение перетаскивания
- */
 function endDrag() {
     if (selectedNode && mouseIsDown) {
         const nodeEl = document.getElementById(selectedNode.id);
@@ -1240,11 +995,6 @@ function endDrag() {
         renderAll();
     }
 }
-
-/**
- * Клик по холсту
- * @param {Event} e - Событие мыши
- */
 function canvasClick(e) {
     if (isModalOpen) return;
     if (e.target.closest('.node')) return;
@@ -1256,12 +1006,6 @@ function canvasClick(e) {
         showTooltip('Режим связей отменен', 1500);
     }
 }
-
-// ==================== ФУНКЦИИ БЛОКНОТА ====================
-
-/**
- * Переключает отображение блокнота
- */
 function toggleNotepad() {
     if (isModalOpen && !isNotepadOpen) return;
 
@@ -1277,10 +1021,6 @@ function toggleNotepad() {
         saveNotepadContent();
     }
 }
-
-/**
- * Обновляет содержимое блокнота
- */
 function updateNotepadContent() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1297,10 +1037,6 @@ function updateNotepadContent() {
         autoSaveTimeout = null;
     }, 1000);
 }
-
-/**
- * Сохраняет содержимое блокнота
- */
 function saveNotepadContent() {
     if (!isNotepadOpen) return;
 
@@ -1330,11 +1066,6 @@ function saveNotepadContent() {
 
     showAutoSaveStatus('saved');
 }
-
-/**
- * Создает объект данных для roadmap
- * @returns {Object} - Данные roadmap
- */
 function createNewRoadmapData() {
     return {
         nodes,
@@ -1346,10 +1077,6 @@ function createNewRoadmapData() {
         name: currentRoadmapId
     };
 }
-
-/**
- * Обновляет статистику блокнота
- */
 function updateStats() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1368,10 +1095,6 @@ function updateStats() {
     if (wordCount) wordCount.textContent = words;
 }
 
-/**
- * Показывает статус автосохранения
- * @param {string} status - Статус ('saving', 'saved')
- */
 function showAutoSaveStatus(status) {
     const statusEl = document.getElementById('autoSaveStatus');
     if (!statusEl) return;
@@ -1398,10 +1121,6 @@ function showAutoSaveStatus(status) {
     }
 }
 
-/**
- * Применяет форматирование к тексту
- * @param {string} type - Тип форматирования
- */
 function formatText(type) {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1435,9 +1154,6 @@ function formatText(type) {
     editor.focus();
 }
 
-/**
- * Резервная функция для зачёркивания
- */
 function applyStrikethroughFallback() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1468,10 +1184,6 @@ function applyStrikethroughFallback() {
     showTooltip('Текст зачёркнут', 1500);
 }
 
-/**
- * Применяет цвет к выделенному тексту
- * @param {string} color - HEX цвет
- */
 function applyColor(color) {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1515,9 +1227,6 @@ function applyColor(color) {
     showTooltip(`Текст окрашен в ${getColorName(color)}`, 1500);
 }
 
-/**
- * Удаляет форматирование
- */
 function removeFormatting() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1536,9 +1245,6 @@ function removeFormatting() {
     showTooltip('Форматирование удалено', 1500);
 }
 
-/**
- * Вставляет ссылку
- */
 function insertLink() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1566,9 +1272,6 @@ function insertLink() {
     }
 }
 
-/**
- * Вставляет код
- */
 function insertCode() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1587,9 +1290,6 @@ function insertCode() {
     editor.focus();
 }
 
-/**
- * Очищает блокнот
- */
 function clearNotepad() {
     if (confirm('Вы уверены, что хотите очистить блокнот? Это действие нельзя отменить.')) {
         notepadContent = '';
@@ -1602,9 +1302,6 @@ function clearNotepad() {
     }
 }
 
-/**
- * Экспортирует заметки
- */
 function exportNotes() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1621,38 +1318,38 @@ function exportNotes() {
     htmlContent = htmlContent.trim();
 
     const cleanHTML = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Заметки из ERBY - ${currentRoadmapId}</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; padding: 20px; background: #383838; color: #ffffff; }
-        .content { max-width: 800px; margin: 0 auto; background: #474747; padding: 30px; border: 24px double #383838; }
-        .header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e4a700; }
-        .date { color: #e4a700; font-size: 14px; }
-        .roadmap-id { color: #4caf50; font-weight: bold; }
-        h1 { color: #f0f0f0; }
-        code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #ffd700; }
-        a { color: #64b5f6; text-decoration: underline; }
-        span[style*="color"] { color: inherit !important; }
-        b, strong { font-weight: bold; }
-        i, em { font-style: italic; }
-        u { text-decoration: underline; }
-        ul { padding-left: 20px; }
-        .exported-content { white-space: pre-wrap; font-size: ${currentFontSize}px; }
-    </style>
-</head>
-<body>
-    <div class="content">
-        <div class="header">
-            <h1>Заметки из ERBY</h1>
-            <div class="date">Экспорт от ${new Date().toLocaleString()}</div>
-            <div class="roadmap-id">Roadmap: ${currentRoadmapId}</div>
-        </div>
-        <div class="exported-content">${htmlContent}</div>
-    </div>
-</body>
-</html>`;
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <title>Заметки из ERBY - ${currentRoadmapId}</title>
+                            <style>
+                                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; padding: 20px; background: #383838; color: #ffffff; }
+                                .content { max-width: 800px; margin: 0 auto; background: #474747; padding: 30px; border: 24px double #383838; }
+                                .header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e4a700; }
+                                .date { color: #e4a700; font-size: 14px; }
+                                .roadmap-id { color: #4caf50; font-weight: bold; }
+                                h1 { color: #f0f0f0; }
+                                code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #ffd700; }
+                                a { color: #64b5f6; text-decoration: underline; }
+                                span[style*="color"] { color: inherit !important; }
+                                b, strong { font-weight: bold; }
+                                i, em { font-style: italic; }
+                                u { text-decoration: underline; }
+                                ul { padding-left: 20px; }
+                                .exported-content { white-space: pre-wrap; font-size: ${currentFontSize}px; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="content">
+                                <div class="header">
+                                    <h1>Заметки из ERBY</h1>
+                                    <div class="date">Экспорт от ${new Date().toLocaleString()}</div>
+                                    <div class="roadmap-id">Roadmap: ${currentRoadmapId}</div>
+                                </div>
+                                <div class="exported-content">${htmlContent}</div>
+                            </div>
+                        </body>
+                        </html>`;
 
     const blob = new Blob([cleanHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -1667,10 +1364,6 @@ function exportNotes() {
     showTooltip('Заметки экспортированы в HTML', 2000);
 }
 
-/**
- * Изменяет размер шрифта
- * @param {number} delta - Изменение
- */
 function changeFontSize(delta) {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1686,9 +1379,6 @@ function changeFontSize(delta) {
     }
 }
 
-/**
- * Загружает размер шрифта
- */
 function loadFontSize() {
     const saved = localStorage.getItem(getStorageKey());
     const editor = document.getElementById('notepadEditor');
@@ -1724,9 +1414,6 @@ function loadFontSize() {
     editor.style.fontSize = currentFontSize + 'px';
 }
 
-/**
- * Обновляет содержимое блокнота из сохраненных данных
- */
 function refreshNotepadContent() {
     const editor = document.getElementById('notepadEditor');
     if (editor) {
@@ -1736,9 +1423,6 @@ function refreshNotepadContent() {
     }
 }
 
-/**
- * Настраивает обработчик ссылок в блокноте
- */
 function setupNotepadLinkHandler() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1762,9 +1446,6 @@ function setupNotepadLinkHandler() {
     });
 }
 
-/**
- * Настраивает автосохранение блокнота
- */
 function setupNotepadAutosave() {
     const editor = document.getElementById('notepadEditor');
     if (!editor) return;
@@ -1818,11 +1499,6 @@ function setupNotepadAutosave() {
     setupNotepadLinkHandler();
 }
 
-// ==================== ФУНКЦИИ ШАБЛОНОВ ====================
-
-/**
- * Показывает модальное окно с шаблонами
- */
 function showTemplates() {
     if (isModalOpen) return;
 
@@ -1835,9 +1511,6 @@ function showTemplates() {
     }
 }
 
-/**
- * Открывает модальное окно шаблонов
- */
 function openTemplatesModal() {
     templatesModal.style.display = 'flex';
     isModalOpen = true;
@@ -1847,18 +1520,11 @@ function openTemplatesModal() {
     document.querySelectorAll('.template-card').forEach(card => card.classList.remove('selected'));
 }
 
-/**
- * Закрывает модальное окно шаблонов
- */
 function closeTemplatesModal() {
     templatesModal.style.display = 'none';
     isModalOpen = false;
 }
 
-/**
- * Выбирает шаблон
- * @param {string} templateId - ID шаблона
- */
 function selectTemplate(templateId) {
     selectedTemplate = templateId;
     isFirstConfirm = false;
@@ -1879,9 +1545,6 @@ function selectTemplate(templateId) {
     }
 }
 
-/**
- * Первый шаг подтверждения
- */
 function confirmFirstStep() {
     if (!isFirstConfirm || !selectedTemplate) return;
 
@@ -1893,9 +1556,6 @@ function confirmFirstStep() {
     confirmBtn.onclick = applyTemplate;
 }
 
-/**
- * Отменяет выбор шаблона
- */
 function cancelTemplate() {
     document.getElementById('confirmDialog').style.display = 'none';
     selectedTemplate = null;
@@ -1903,9 +1563,6 @@ function cancelTemplate() {
     document.querySelectorAll('.template-card').forEach(card => card.classList.remove('selected'));
 }
 
-/**
- * Применяет выбранный шаблон
- */
 function applyTemplate() {
     if (!selectedTemplate) {
         closeTemplatesModal();
@@ -1935,11 +1592,6 @@ function applyTemplate() {
     closeTemplatesModal();
 }
 
-/**
- * Возвращает данные шаблона
- * @param {string} templateId - ID шаблона
- * @returns {Object} - Данные шаблона
- */
 function getTemplateData(templateId) {
     const templates = {
         'empty': { nodes: [], connections: [] },
@@ -1966,11 +1618,6 @@ function getTemplateData(templateId) {
     return template;
 }
 
-/**
- * Возвращает имя шаблона
- * @param {string} templateId - ID шаблона
- * @returns {string} - Имя шаблона
- */
 function getTemplateName(templateId) {
     const names = {
         'empty': 'Пустой шаблон',
@@ -1980,11 +1627,6 @@ function getTemplateName(templateId) {
     return names[templateId] || 'Шаблон';
 }
 
-// ==================== ФУНКЦИИ ЭКСПОРТА/ИМПОРТА ====================
-
-/**
- * Экспортирует данные в JSON
- */
 function exportData() {
     if (isNotepadOpen) {
         const editor = document.getElementById('notepadEditor');
@@ -2014,9 +1656,6 @@ function exportData() {
     showTooltip(`Roadmap "${currentRoadmapId}" экспортирован`, 2000);
 }
 
-/**
- * Сохраняет все данные
- */
 function saveAll() {
     if (isNotepadOpen) {
         const textarea = document.getElementById('notepadText');
@@ -2026,9 +1665,6 @@ function saveAll() {
     showTooltip('Данные сохранены в браузере', 2000);
 }
 
-/**
- * Загружает данные из файла
- */
 function loadFromFile() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -2099,11 +1735,6 @@ function loadFromFile() {
     input.click();
 }
 
-// ==================== СЛУЖЕБНЫЕ ФУНКЦИИ ====================
-
-/**
- * Обновляет часы
- */
 function updateClock() {
     const now = new Date();
     document.getElementById('clock-hh').textContent = now.getHours().toString().padStart(3, 'O');
@@ -2111,9 +1742,6 @@ function updateClock() {
     document.getElementById('clock-ss').textContent = now.getSeconds().toString().padStart(3, 'O');
 }
 
-/**
- * Регистрирует Service Worker
- */
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('pwa.js')
@@ -2122,12 +1750,6 @@ function registerServiceWorker() {
     }
 }
 
-// ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
-
-/**
- * Обрабатывает нажатия клавиш
- * @param {KeyboardEvent} e - Событие клавиатуры
- */
 function handleKeyPress(e) {
     if (isModalOpen && !isNotepadOpen) {
         if (e.key === 'Escape') {
@@ -2198,27 +1820,16 @@ function handleKeyPress(e) {
     }
 }
 
-// ==================== ФУНКЦИИ МОДАЛЬНЫХ ОКОН ====================
-
-/**
- * Показывает справку
- */
 function showHelp() {
     helpModal.style.display = 'flex';
     isModalOpen = true;
 }
 
-/**
- * Закрывает справку
- */
 function closeHelp() {
     helpModal.style.display = 'none';
     isModalOpen = false;
 }
 
-/**
- * Переключает модальное окно roadmap'ов
- */
 function toggleRoadmapsModal() {
     isRoadmapsModalOpen = !isRoadmapsModalOpen;
     const modal = document.getElementById('roadmapsModal');
@@ -2239,11 +1850,6 @@ function toggleRoadmapsModal() {
     }
 }
 
-// ==================== НАСТРОЙКА СОБЫТИЙ ====================
-
-/**
- * Настраивает обработчики событий интерфейса
- */
 function setupEventListeners() {
     canvas.addEventListener('click', canvasClick);
     canvas.addEventListener('mousedown', startDrag);
@@ -2271,9 +1877,6 @@ function setupEventListeners() {
     });
 }
 
-/**
- * Предотвращает выделение текста вне блокнота
- */
 function preventGlobalTextSelection() {
     document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
@@ -2314,13 +1917,7 @@ function preventGlobalTextSelection() {
     });
 }
 
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
-
-/**
- * Главная функция инициализации
- */
 function init() {
-    // Получаем ссылки на DOM элементы
     canvas = document.getElementById('roadmapCanvas');
     nodeModal = document.getElementById('nodeModal');
     helpModal = document.getElementById('helpModal');
@@ -2330,17 +1927,12 @@ function init() {
     connectBtn = document.getElementById('connectBtn');
     nativeColorPicker = document.getElementById('nativeColorPicker');
 
-    // Проверяем версию и чистим кэш
     checkAppVersion();
-
-    // Инициализируем систему roadmap
     initRoadmapSystem();
 
-    // Устанавливаем версию в подвал
     const versionEl = document.getElementById('versionPlaceholder');
     if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
 
-    // Настраиваем обработчики
     window.addEventListener('hashchange', () => {
         initRoadmapSystem();
         renderAll();
@@ -2357,12 +1949,10 @@ function init() {
     gridBackground = document.getElementById('gridBackground');
     checkAllNodesLocked();
 
-    // Блокируем скролл колесиком по горизонтали
     document.addEventListener('wheel', (e) => {
         if (e.deltaX !== 0) e.preventDefault();
     }, { passive: false });
 
-    // Первый запуск - показываем справку
     if (!localStorage.getItem('roadmapFirstRun')) {
         setTimeout(() => {
             if (confirm('Привет! Это ваш первый запуск ERBY. Теперь вы можете создавать несколько roadmap\'ов. Хотите посмотреть справку?')) {
@@ -2372,7 +1962,6 @@ function init() {
         localStorage.setItem('roadmapFirstRun', 'true');
     }
 
-    // Настраиваем редактор блокнота
     setTimeout(() => {
         const editor = document.getElementById('notepadEditor');
         if (editor) {
@@ -2386,9 +1975,7 @@ function init() {
         }
     }, 100);
 
-    // Блокируем выделение текста
     preventGlobalTextSelection();
 }
 
-// Запускаем приложение после загрузки DOM
 document.addEventListener('DOMContentLoaded', init);

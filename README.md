@@ -1,7 +1,7 @@
 <table border="20" align="center">
     <tr>
         <td>
-            <img src="https://github.com/somenmi/images/raw/main/ERBY/logo.png" width="120" height="120">
+            <img src="https://raw.githubusercontent.com/somenmi/images/main/ERBY/logo.png" width="120" height="120">
         </td>
         <td align="center">
             <h1><a href="https://somenmi.github.io/ERBY/"><b>ERBY</b> (Easy Roadmap Builder of Yalkee)</a></h1>
@@ -12,8 +12,8 @@
 
 <div align="center">
 
-[![Web App](https://shields.io/badge/WEB-APP-red.svg)](https://somenmi.github.io/ERBY/)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+[![Web App](https://shields.io/badge/WEB-APP-pink.svg)](https://somenmi.github.io/ERBY/)
+![License](https://img.shields.io/badge/License-MIT-pink.svg)
 
 </div>
 
@@ -90,6 +90,9 @@
     × Полностью переработан Service Worker с версионированием
     × Автоматическое удаление старых кэшей при обновлении
     × Оптимизация и очистка кода (полностью передела, до идеала, script.js)
+
+    × v1.3.1 : Исправление тривиальных недочётов (например: путь к bg.png и logo.png)
+        ↪︎ После обновления (выхода новой версии) сохраняется вся информация
 
 ## Использование
 Откройте [веб-приложение](https://somenmi.github.io/ERBY/) и начните создавать свою дорожную карту!
