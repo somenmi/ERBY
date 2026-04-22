@@ -1645,8 +1645,276 @@ function applyTemplate() {
 function getTemplateData(templateId) {
     const templates = {
         'empty': { nodes: [], connections: [] },
-        'roadmap1': { /* ... данные ... */ },
-        'roadmap2': { /* ... данные ... */ }
+        'roadmap1': {
+            "nodes": [
+                {
+                    "id": "nt1_1",
+                    "title": "Основной этап",
+                    "description": "Начальная точка вашей дорожной карты",
+                    "x": 42,
+                    "y": 453,
+                    "color": "#3c4385",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_2",
+                    "title": "Подэтап 1",
+                    "description": "Первый важный шаг",
+                    "x": 572,
+                    "y": 271,
+                    "color": "#b84d2d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_3",
+                    "title": "Подэтап 2",
+                    "description": "Второй важный шаг",
+                    "x": 578,
+                    "y": 418,
+                    "color": "#b84d2d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_4",
+                    "title": "Подэтап 3",
+                    "description": "Третий важный шаг",
+                    "x": 581,
+                    "y": 556,
+                    "color": "#b84d2d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_5",
+                    "title": "Центральный узел",
+                    "description": "Координационный центр",
+                    "x": 314,
+                    "y": 450,
+                    "color": "#4a1f10",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_6",
+                    "title": "Подэтап 4",
+                    "description": "Четвертый важный шаг",
+                    "x": 537,
+                    "y": 699,
+                    "color": "#b84d2d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_7",
+                    "title": "Промежуточный этап A",
+                    "description": "Переход к финальной части",
+                    "x": 878,
+                    "y": 622,
+                    "color": "#2b755f",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_8",
+                    "title": "Промежуточный этап B",
+                    "description": "Второй переход",
+                    "x": 873,
+                    "y": 319,
+                    "color": "#2b5f75",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_9",
+                    "title": "Объединяющий этап",
+                    "description": "Сбор всех ветвей",
+                    "x": 1061,
+                    "y": 460,
+                    "color": "#3b3b3b",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_10",
+                    "title": "Финальная подготовка",
+                    "description": "Подготовка к завершению",
+                    "x": 1343,
+                    "y": 455,
+                    "color": "#307db1",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_11",
+                    "title": "Верхний финал",
+                    "description": "Верхняя финальная точка",
+                    "x": 1404,
+                    "y": 286,
+                    "color": "#307db1",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_12",
+                    "title": "Финальная цель",
+                    "description": "Конечный результат",
+                    "x": 1610,
+                    "y": 456,
+                    "color": "#b39430",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt1_13",
+                    "title": "Нижний финал",
+                    "description": "Нижняя финальная точка",
+                    "x": 1398,
+                    "y": 629,
+                    "color": "#307db1",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                }
+            ],
+            "connections": [
+                { "id": "nt1_1_nt1_5", "fromId": "nt1_1", "toId": "nt1_5" },
+                { "id": "nt1_5_nt1_3", "fromId": "nt1_5", "toId": "nt1_3" },
+                { "id": "nt1_5_nt1_2", "fromId": "nt1_5", "toId": "nt1_2" },
+                { "id": "nt1_5_nt1_4", "fromId": "nt1_5", "toId": "nt1_4" },
+                { "id": "nt1_5_nt1_6", "fromId": "nt1_5", "toId": "nt1_6" },
+                { "id": "nt1_2_nt1_8", "fromId": "nt1_2", "toId": "nt1_8" },
+                { "id": "nt1_3_nt1_8", "fromId": "nt1_3", "toId": "nt1_8" },
+                { "id": "nt1_4_nt1_7", "fromId": "nt1_4", "toId": "nt1_7" },
+                { "id": "nt1_6_nt1_7", "fromId": "nt1_6", "toId": "nt1_7" },
+                { "id": "nt1_7_nt1_9", "fromId": "nt1_7", "toId": "nt1_9" },
+                { "id": "nt1_8_nt1_9", "fromId": "nt1_8", "toId": "nt1_9" },
+                { "id": "nt1_9_nt1_10", "fromId": "nt1_9", "toId": "nt1_10" },
+                { "id": "nt1_11_nt1_10", "fromId": "nt1_11", "toId": "nt1_10" },
+                { "id": "nt1_12_nt1_11", "fromId": "nt1_12", "toId": "nt1_11" },
+                { "id": "nt1_10_nt1_12", "fromId": "nt1_10", "toId": "nt1_12" },
+                { "id": "nt1_10_nt1_13", "fromId": "nt1_10", "toId": "nt1_13" },
+                { "id": "nt1_13_nt1_12", "fromId": "nt1_13", "toId": "nt1_12" }
+            ]
+        },
+        'roadmap2': {
+            "nodes": [
+                {
+                    "id": "nt2_1",
+                    "title": "Центральный узел",
+                    "description": "Основная точка координации",
+                    "x": 889,
+                    "y": 17,
+                    "color": "#3c4385",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_2",
+                    "title": "Нижний уровень",
+                    "description": "Базовые операции",
+                    "x": 891,
+                    "y": 397,
+                    "color": "#3f2342",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_3",
+                    "title": "Средний уровень",
+                    "description": "Промежуточные задачи",
+                    "x": 892,
+                    "y": 278,
+                    "color": "#204f2a",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_4",
+                    "title": "Левый узел",
+                    "description": "Левая ветвь развития",
+                    "x": 697,
+                    "y": 155,
+                    "color": "#1c374d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_5",
+                    "title": "Правый узел",
+                    "description": "Правая ветвь развития",
+                    "x": 1083,
+                    "y": 148,
+                    "color": "#1c374d",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_6",
+                    "title": "Левый процесс",
+                    "description": "Детали левого процесса",
+                    "x": 598,
+                    "y": 496,
+                    "color": "#533857",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_7",
+                    "title": "Центральный процесс",
+                    "description": "Основной рабочий процесс",
+                    "x": 883,
+                    "y": 567,
+                    "color": "#533857",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_8",
+                    "title": "Правый процесс",
+                    "description": "Детали правого процесса",
+                    "x": 1170,
+                    "y": 491,
+                    "color": "#533857",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_9",
+                    "title": "Финальный этап",
+                    "description": "Завершение всех процессов",
+                    "x": 883,
+                    "y": 741,
+                    "color": "#694f2f",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                },
+                {
+                    "id": "nt2_10",
+                    "title": "Поддержка",
+                    "description": "Вспомогательный этап",
+                    "x": 417,
+                    "y": 202,
+                    "color": "#1b4a70",
+                    "progress": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "locked": false
+                }
+            ],
+            "connections": [
+                { "id": "nt2_1_nt2_4", "fromId": "nt2_1", "toId": "nt2_4" },
+                { "id": "nt2_5_nt2_1", "fromId": "nt2_5", "toId": "nt2_1" },
+                { "id": "nt2_3_nt2_5", "fromId": "nt2_3", "toId": "nt2_5" },
+                { "id": "nt2_3_nt2_4", "fromId": "nt2_3", "toId": "nt2_4" },
+                { "id": "nt2_10_nt2_4", "fromId": "nt2_10", "toId": "nt2_4" },
+                { "id": "nt2_6_nt2_2", "fromId": "nt2_6", "toId": "nt2_2" },
+                { "id": "nt2_2_nt2_3", "fromId": "nt2_2", "toId": "nt2_3" },
+                { "id": "nt2_8_nt2_2", "fromId": "nt2_8", "toId": "nt2_2" },
+                { "id": "nt2_8_nt2_7", "fromId": "nt2_8", "toId": "nt2_7" },
+                { "id": "nt2_6_nt2_7", "fromId": "nt2_6", "toId": "nt2_7" },
+                { "id": "nt2_7_nt2_9", "fromId": "nt2_7", "toId": "nt2_9" }
+            ]
+        }
     };
 
     const template = templates[templateId];
